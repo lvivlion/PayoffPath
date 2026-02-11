@@ -1,0 +1,1215 @@
+/**
+ * content.js — PayoffPath v2
+ * Universal loan payoff accelerator.
+ * Supports: Mortgage, Student Loan, Auto Loan, Personal Loan, Other.
+ */
+
+console.log('PayoffPath v2 Content Script Loaded');
+
+// ═══════════════════════════════════════════════════════════════
+//  MODULE 1: CSS — All shadow DOM styles
+// ═══════════════════════════════════════════════════════════════
+const PP_CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+  :host { all: initial; font-family: 'DM Sans', system-ui, -apple-system, sans-serif; -webkit-font-smoothing: antialiased; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :host {
+    display: block;
+    /* Dark Theme (Deep Space Premium) */
+    --accent: #10b981; --accent-2: #059669; --accent-glow: rgba(16,185,129,0.3);
+    --cyan: #06b6d4; --cyan-glow: rgba(6,182,212,0.25);
+    --bg-0: #0a0f1e; --bg-1: #0f172a; --bg-2: #1e293b; --bg-3: #111827;
+    --surface: #1e293b; --surface-hover: #334155;
+    --glass: #111827; --glass-border: rgba(255,255,255,0.1);
+    --border: rgba(255,255,255,0.08); --border-accent: rgba(16,185,129,0.35);
+    --text: #ffffff; --text-2: #f1f5f9; --text-muted: #94a3b8;
+    --radius: 12px; --radius-lg: 18px; --radius-sm: 8px;
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --shadow: 0 10px 40px rgba(0,0,0,0.6);
+    --chart-grid: rgba(255,255,255,0.04);
+  }
+
+  :host(.light-theme) {
+    /* Light Theme (Glacier Premium) */
+    --bg-0: #f8fafc; --bg-1: #ffffff; --bg-2: #f1f5f9; --bg-3: #ffffff;
+    --surface: #ffffff; --surface-hover: #f1f5f9;
+    --glass: #ffffff; --glass-border: rgba(15,23,42,0.08);
+    --border: rgba(15,23,42,0.08); --border-accent: #059669;
+    --text: #0f172a; --text-2: #334151; --text-muted: #64748b;
+    --accent: #059669; --accent-2: #047857; --accent-glow: rgba(5,150,105,0.1);
+    --cyan: #0891b2;
+    --shadow: 0 8px 30px rgba(15,23,42,0.08);
+    --chart-grid: rgba(15,23,42,0.05);
+  }
+
+  /* ── Bubble ── */
+  .pp-bubble {
+    pointer-events: auto;
+    position: fixed; bottom: 24px; right: 24px; width: 52px; height: 52px;
+    background: linear-gradient(135deg, #6ee7b7 0%, #34d399 50%, #059669 100%);
+    border-radius: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 20px rgba(110,231,183,0.35), 0 0 0 1px rgba(110,231,183,0.15), inset 0 1px 0 rgba(255,255,255,0.2);
+    z-index: 2147483640;
+    transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  .pp-bubble:hover { transform: translateY(-4px) scale(1.1); box-shadow: 0 8px 32px rgba(110,231,183,0.5), 0 0 0 1px rgba(110,231,183,0.3); }
+  .pp-bubble:active { transform: translateY(-1px) scale(1.02); }
+
+  /* ── Modal Overlay ── */
+  .pp-modal {
+    pointer-events: auto;
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: #0a0f1e; /* Opaque Base */
+    background: var(--bg-0);
+    display: none; z-index: 2147483641; flex-direction: column; overflow: hidden;
+    font-family: 'DM Sans', sans-serif; color: var(--text);
+  }
+  .pp-modal[style*="flex"] { display: flex; animation: ppFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+  @keyframes ppFadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ── Modal Header ── */
+  .pp-header {
+    padding: 24px 40px; display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 1px solid var(--border); flex-shrink: 0;
+    background: #111827; /* Opaque Base */
+    background: var(--bg-3);
+  }
+  .pp-header h1 {
+    margin: 0; font-size: 1.25rem; font-weight: 700; color: var(--text);
+    font-family: var(--font-display); letter-spacing: -0.01em;
+  }
+  .pp-header .subtitle { margin: 2px 0 0; color: var(--text-muted); font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 500; }
+  .pp-close {
+    width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
+    font-size: 18px; cursor: pointer; color: var(--text-muted); transition: all 0.2s;
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  }
+  .pp-close:hover { color: var(--text); background: var(--surface-hover); border-color: var(--border-accent); transform: scale(1.05); }
+  .pp-header-btn {
+    background: var(--surface); border: 1px solid var(--border); color: var(--text-2);
+    padding: 8px 16px; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600; font-size: 0.75rem;
+    display: flex; align-items: center; gap: 8px; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); font-family: inherit;
+    letter-spacing: 0.02em; text-transform: uppercase;
+  }
+  .pp-header-btn:hover { background: var(--surface-hover); color: var(--text); border-color: var(--border-accent); box-shadow: 0 0 20px var(--accent-glow); transform: translateY(-1px); }
+  .pp-theme-toggle .pp-sun { display: none; }
+  .pp-theme-toggle .pp-moon { display: block; }
+  :host(.light-theme) .pp-theme-toggle .pp-sun { display: block; }
+  :host(.light-theme) .pp-theme-toggle .pp-moon { display: none; }
+  :host(.light-theme) .pp-header-btn:hover { color: var(--accent); }
+
+  /* ── Dashboard Grid ── */
+  .pp-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    padding: 24px 32px;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    align-content: flex-start;
+  }
+  .pp-col {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    min-width: 300px;
+    flex: 1;
+  }
+  /* Ensure middle column (Trajectory) gets more space */
+  .pp-col:nth-child(2) { flex: 2; min-width: 450px; }
+
+  /* ── Cards (Glassmorphism) ── */
+  .pp-card {
+    background: var(--bg-1); border: 1px solid var(--border); border-radius: var(--radius-lg);
+    padding: 20px; transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative; overflow: hidden; box-shadow: var(--shadow);
+    display: flex; flex-direction: column;
+    min-height: 100px;
+  }
+  .pp-card::before {
+    content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,0.02) 0%, transparent 40%);
+    pointer-events: none;
+  }
+  :host(.light-theme) .pp-card::before { background: linear-gradient(135deg, rgba(15,23,42,0.01) 0%, transparent 40%); }
+  .pp-card:hover { border-color: var(--border-accent); transform: translateY(-2px); box-shadow: 0 15px 45px rgba(0,0,0,0.15); }
+  .pp-card h3 {
+    margin: 0 0 16px; font-size: 0.8rem; color: var(--text-2); font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.1em; font-family: var(--font-display);
+    display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+  }
+
+  /* ── Stats ── */
+  .pp-stat { margin-bottom: 12px; }
+  .pp-stat-label {
+    font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;
+    letter-spacing: 0.12em; font-weight: 600; margin-bottom: 4px;
+    font-family: var(--font-display);
+  }
+  .pp-stat-value {
+    font-size: 1.6rem; font-weight: 700; color: var(--text);
+    font-family: var(--font-display); letter-spacing: -0.04em; line-height: 1;
+  }
+  .pp-stat-value.green {
+    background: linear-gradient(135deg, var(--accent), var(--cyan));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ── Progress Bar ── */
+  .pp-progress-bg {
+    height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px;
+    overflow: hidden; position: relative;
+  }
+  .pp-progress-bar {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--accent-2), var(--accent), var(--cyan));
+    border-radius: 3px; transition: width 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 0 12px var(--accent-glow);
+  }
+
+  /* ── Sliders ── */
+  .pp-control { margin-bottom: 14px; }
+  .pp-control-header {
+    display: flex; justify-content: space-between; margin-bottom: 4px;
+    font-weight: 500; color: var(--text-2); font-size: 0.75rem;
+  }
+  .pp-control-header span:last-child { color: var(--accent); font-family: var(--font-mono); font-weight: 500; font-size: 0.75rem; }
+  input[type=range] {
+    width: 100%; height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px;
+    appearance: none; outline: none; margin: 8px 0; transition: background 0.2s;
+  }
+  input[type=range]:hover { background: rgba(255,255,255,0.12); }
+  input[type=range]::-webkit-slider-thumb {
+    appearance: none; width: 16px; height: 16px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border: 3px solid var(--bg-1); border-radius: 50%; cursor: pointer;
+    box-shadow: 0 0 12px var(--accent-glow), 0 2px 8px rgba(0,0,0,0.3); transition: all 0.2s;
+  }
+  input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.25); box-shadow: 0 0 20px var(--accent-glow); }
+
+  /* ── Table ── */
+  .pp-table-wrap {
+    flex: 1; min-height: 200px; overflow-y: auto;
+    background: rgba(0,0,0,0.1); border-radius: var(--radius-sm); border: 1px solid var(--border);
+  }
+  .pp-table-wrap::-webkit-scrollbar { width: 4px; }
+  .pp-table-wrap::-webkit-scrollbar-track { background: transparent; }
+  .pp-table-wrap::-webkit-scrollbar-thumb { background: var(--border-accent); border-radius: 2px; }
+  
+  .pp-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+  .pp-table th {
+    text-align: left; padding: 10px 16px; color: var(--text-muted); font-weight: 700;
+    font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em;
+    border-bottom: 1px solid var(--border); position: sticky; top: 0;
+    background: var(--bg-1); z-index: 10; font-family: var(--font-display);
+  }
+  .pp-table td { padding: 10px 16px; border-bottom: 1px solid rgba(255,255,255,0.02); color: var(--text-2); font-family: var(--font-mono); }
+  .pp-table tr:hover { background: rgba(16,185,129,0.03); }
+  .pp-row-current { background: rgba(16,185,129,0.12) !important; border-left: 3px solid var(--accent); }
+  .pp-row-current td { color: white; font-weight: 600; }
+  .pp-row-past.hidden { display: none; }
+  .pp-toggle-history {
+    font-size: 0.65rem; color: var(--accent); cursor: pointer; border: 1px solid var(--border-accent);
+    padding: 3px 8px; border-radius: 6px; background: rgba(16,185,129,0.05);
+    transition: all 0.2s; font-family: var(--font-display); font-weight: 600; outline: none;
+  }
+  .pp-toggle-history:hover { background: var(--accent); color: white; }
+
+  /* ── Charts ── */
+  .pp-chart-container { flex: 1; min-height: 220px; position: relative; width: 100%; margin: 12px 0; }
+  .pp-pie-container { height: 160px; position: relative; margin-top: 8px; display: flex; justify-content: center; }
+  .pp-pie-wrapper { position: relative; width: 160px; height: 160px; }
+  .pp-pie-center-text {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    font-family: var(--font-display); font-weight: 700; font-size: 1.2rem; color: var(--text);
+    pointer-events: none;
+  }
+
+  /* ── Recommendation ── */
+  .pp-recommendation-card {
+    background: linear-gradient(135deg, rgba(16,185,129,0.1), rgba(6,182,212,0.05));
+    border: 1px solid var(--border-accent); padding: 20px; border-radius: var(--radius-lg);
+    display: flex; flex-direction: column; gap: 12px; flex: 1;
+  }
+
+  /* ── Banner ── */
+  .pp-banner {
+    background: linear-gradient(135deg, rgba(110,231,183,0.08), rgba(103,232,249,0.04));
+    border: 1px solid rgba(110,231,183,0.15); padding: 16px 20px; border-radius: var(--radius);
+    display: flex; align-items: center; gap: 14px; margin-bottom: 12px;
+  }
+  .pp-icon-circle {
+    width: 40px; height: 40px; border-radius: 14px;
+    background: linear-gradient(135deg, var(--accent-2), #059669);
+    display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
+    flex-shrink: 0; box-shadow: 0 4px 12px rgba(52,211,153,0.3);
+  }
+
+  /* ── Settings Panel ── */
+  .pp-settings {
+    pointer-events: auto;
+    position: absolute; top: 72px; right: 36px; width: 340px;
+    background: #111827; border: 1px solid var(--border-accent); border-radius: var(--radius-lg);
+    background: var(--bg-3);
+    padding: 24px; display: none; flex-direction: column; gap: 12px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.7), 0 0 40px rgba(110,231,183,0.06);
+    z-index: 2147483645; animation: ppSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    font-family: 'DM Sans', sans-serif; color: var(--text);
+  }
+  @keyframes ppSlideIn { from { transform: translateY(-12px) scale(0.97); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+  .pp-settings label { font-size: 0.75rem; color: var(--text-muted); font-weight: 500; display: block; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.06em; font-family: var(--font-display); }
+  .pp-settings input, .pp-settings select {
+    width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+    color: white; padding: 10px 14px; border-radius: var(--radius-sm); outline: none;
+    font-size: 0.85rem; font-family: inherit; transition: all 0.2s;
+  }
+  .pp-settings input:focus, .pp-settings select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+  .pp-btn {
+    background: linear-gradient(135deg, var(--accent-2), #059669); border: none; color: white;
+    padding: 11px 16px; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600;
+    transition: all 0.25s; font-family: inherit; font-size: 0.85rem;
+    box-shadow: 0 2px 12px rgba(52,211,153,0.25);
+  }
+  .pp-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(52,211,153,0.35); }
+  .pp-btn-danger {
+    background: var(--danger-dim); color: var(--danger); border: 1px solid rgba(251,113,133,0.2);
+    padding: 11px 16px; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600;
+    transition: all 0.25s; font-family: inherit; font-size: 0.85rem;
+  }
+  .pp-btn-danger:hover { background: rgba(251,113,133,0.18); border-color: var(--danger); }
+
+  /* ── Onboarding Overlay ── */
+  .pp-onboarding {
+    pointer-events: auto;
+    position: fixed; inset: 0;
+    background: #0b1121;
+    z-index: 2147483646; display: none; align-items: center; justify-content: center;
+    font-family: 'DM Sans', sans-serif; color: var(--text);
+  }
+  .pp-ob-card {
+    width: 500px;
+    background: #101b30;
+    border: 1px solid rgba(110,231,183,0.2); border-radius: 28px; padding: 36px 40px;
+    text-align: center; position: relative;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.6), 0 0 80px rgba(110,231,183,0.04), inset 0 1px 0 rgba(255,255,255,0.05);
+    animation: ppScaleUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes ppScaleUp { from { transform: scale(0.92) translateY(12px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+  .pp-ob-close {
+    position: absolute; top: 14px; right: 18px; cursor: pointer; color: var(--text-muted);
+    font-size: 1.1rem; transition: all 0.3s; background: var(--surface); border: 1px solid var(--border);
+    width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+  }
+  .pp-ob-close:hover { color: white; border-color: var(--border-accent); }
+
+  /* Stepper dots */
+  .pp-stepper { display: flex; justify-content: center; gap: 8px; margin-bottom: 28px; }
+  .pp-dot {
+    width: 8px; height: 8px; border-radius: 4px; background: rgba(255,255,255,0.1);
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .pp-dot.active {
+    background: linear-gradient(90deg, var(--accent), var(--cyan));
+    box-shadow: 0 0 14px var(--accent-glow);
+    width: 36px;
+  }
+  .pp-dot.done { background: rgba(110,231,183,0.35); }
+
+  .pp-ob-step { display: none; flex-direction: column; gap: 14px; }
+  .pp-ob-step.active { display: flex; animation: ppStepIn 0.35s ease; }
+  @keyframes ppStepIn { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: translateX(0); } }
+  .pp-ob-title { font-size: 1.4rem; font-weight: 700; color: #fff; font-family: var(--font-display); letter-spacing: -0.02em; }
+  .pp-ob-text { color: var(--text-muted); line-height: 1.7; font-size: 0.9rem; }
+  .pp-ob-footer { display: flex; justify-content: center; gap: 10px; margin-top: 16px; }
+
+  .pp-ob-btn {
+    background: linear-gradient(135deg, var(--accent-2) 0%, #059669 100%); color: white; border: none;
+    padding: 13px 28px; border-radius: 14px; cursor: pointer; font-weight: 600; font-size: 0.92rem;
+    transition: all 0.3s; box-shadow: 0 4px 16px rgba(52,211,153,0.3); font-family: inherit;
+    letter-spacing: 0.01em;
+  }
+  .pp-ob-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(52,211,153,0.4); }
+  .pp-ob-btn:active { transform: translateY(0); }
+  .pp-ob-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .pp-ob-btn.secondary {
+    background: var(--surface); border: 1px solid var(--border); color: var(--text-2); box-shadow: none;
+  }
+  .pp-ob-btn.secondary:hover { background: var(--surface-hover); color: white; border-color: rgba(255,255,255,0.15); }
+
+  /* Suggestion tokens */
+  .pp-suggestions { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; max-height: 200px; overflow-y: auto; }
+  .pp-suggestions::-webkit-scrollbar { width: 4px; }
+  .pp-suggestions::-webkit-scrollbar-thumb { background: rgba(110,231,183,0.2); border-radius: 2px; }
+  .pp-suggestion {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 14px 18px; cursor: pointer; transition: all 0.25s;
+  }
+  .pp-suggestion:hover { border-color: rgba(110,231,183,0.3); background: rgba(110,231,183,0.05); }
+  .pp-suggestion.selected {
+    border-color: var(--accent); background: rgba(110,231,183,0.08);
+    box-shadow: 0 0 0 3px var(--accent-glow), inset 0 0 20px rgba(110,231,183,0.03);
+  }
+
+  /* Onboarding form */
+  .pp-ob-form { display: flex; flex-direction: column; gap: 12px; text-align: left; }
+  .pp-ob-form label {
+    font-size: 0.72rem; color: var(--text-muted); font-weight: 500;
+    text-transform: uppercase; letter-spacing: 0.08em; font-family: var(--font-display);
+  }
+  .pp-ob-form input, .pp-ob-form select {
+    width: 100%; background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+    color: white; padding: 11px 14px; border-radius: 12px; outline: none;
+    font-size: 0.9rem; font-family: inherit; transition: all 0.2s;
+  }
+  .pp-ob-form input:focus, .pp-ob-form select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+  .pp-ob-form input::placeholder { color: var(--text-muted); opacity: 0.5; }
+  .pp-ob-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  select option { background: var(--bg-1); color: var(--text); }
+`;
+
+// ═══════════════════════════════════════════════════════════════
+//  MODULE 2: HTML — Template for the full UI
+// ═══════════════════════════════════════════════════════════════
+function buildHTML() {
+  const host = window.location.hostname;
+  return `
+    <div class="pp-bubble" id="pp-bubble">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+    </div>
+
+    <!-- ═══ DASHBOARD ═══ -->
+    <div class="pp-modal" id="pp-modal">
+      <div class="pp-header">
+        <div style="display:flex; align-items:center; gap:14px">
+          <div class="pp-icon-circle">🏠</div>
+          <div>
+            <h1>PayoffPath Dashboard</h1>
+            <p class="subtitle">Loan Payoff Simulator & Tracker</p>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px">
+          <a href="https://www.linkedin.com/in/ost4p/" target="_blank" style="color:var(--text-muted); display:flex; align-items:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg></a>
+          <a href="https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=ostaplernatovych@gmail.com&currency_code=USD" target="_blank" style="text-decoration:none">
+            <button style="background:linear-gradient(135deg,#fbbf24,#f59e0b); color:#1a1a2e; border:none; padding:7px 14px; border-radius:var(--radius-sm); cursor:pointer; font-weight:600; font-size:0.75rem; display:flex; align-items:center; gap:5px; font-family:var(--font-display); letter-spacing:0.02em; box-shadow:0 2px 10px rgba(251,191,36,0.25)">☕ Donate</button>
+          </a>
+
+          <button class="pp-header-btn pp-theme-toggle" id="pp-theme-toggle" title="Toggle Theme">
+            <svg class="pp-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+            <svg class="pp-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+          </button>
+          <button class="pp-header-btn" id="pp-settings-btn" title="Settings">⚙</button>
+          <button class="pp-close" id="pp-close">✕</button>
+        </div>
+      </div>
+
+      <!-- Dashboard Grid -->
+      <div class="pp-grid">
+        <!-- COLUMN 1: Loan Profile & Simulator -->
+        <div class="pp-col">
+          <div class="pp-card">
+            <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg> <span id="pp-orig-label">Original Loan</span></h3>
+            <div class="pp-stat">
+              <div class="pp-stat-label">ORIGINAL AMOUNT</div>
+              <div class="pp-stat-value" id="pp-orig">$---</div>
+            </div>
+            <div class="pp-stat">
+              <div class="pp-stat-label">CURRENT BALANCE</div>
+              <div class="pp-stat-value" id="pp-balance">$---</div>
+            </div>
+            <div style="margin:8px 0 4px">
+              <div style="display:flex; justify-content:space-between; margin-bottom:8px">
+                <span class="pp-stat-label">LOAN PROGRESS</span>
+                <span id="pp-percent" style="font-size:0.75rem; color:var(--accent); font-weight:700; font-family:var(--font-mono)">0%</span>
+              </div>
+              <div class="pp-progress-bg"><div class="pp-progress-bar" id="pp-bar"></div></div>
+            </div>
+          </div>
+
+          <div class="pp-card" style="border-color:var(--border-accent); flex:1">
+            <h3 style="color:var(--accent)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Premium Simulator</h3>
+            <div class="pp-control">
+              <div class="pp-control-header"><span>Extra Monthly</span><span class="highlight" id="pp-lbl-monthly">+$0</span></div>
+              <input type="range" id="pp-slide-monthly" min="0" max="5000" step="50" value="0">
+            </div>
+            <div class="pp-control">
+              <div class="pp-control-header"><span>Lump-Sum Payment</span><span class="highlight" id="pp-lbl-drop">+$0</span></div>
+              <input type="range" id="pp-slide-drop" min="0" max="50000" step="1000" value="0">
+            </div>
+            <div style="padding-top:16px; margin-top:8px; border-top:1px solid var(--border)">
+              <div class="pp-stat-label">TIME SAVED</div>
+              <div class="pp-stat-value green" id="pp-time-saved" style="font-size:1.4rem">0 Months</div>
+              <div class="pp-stat-label" style="margin-top:12px">DEBT-FREE DATE</div>
+              <div class="pp-stat-value" id="pp-payoff-date" style="font-size:1.1rem">---</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- COLUMN 2: Analytics & Amortization -->
+        <div class="pp-col">
+          <div class="pp-card" style="flex:1">
+            <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg> Payoff Trajectory</h3>
+            <div class="pp-chart-container">
+              <canvas id="pp-chart-line"></canvas>
+            </div>
+            
+            <div style="margin-top:16px; border-top:1px solid var(--border); pt:16px">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
+                <h3 style="margin:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg> Amortized Path</h3>
+                <button class="pp-toggle-history" id="pp-toggle-history">Show History</button>
+              </div>
+              <div class="pp-table-wrap">
+                <table class="pp-table">
+                  <thead id="pp-table-head"></thead>
+                  <tbody id="pp-table-body"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- COLUMN 3: Progress & Real-time Edge -->
+        <div class="pp-col">
+          <div class="pp-card">
+            <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg> Total Savings</h3>
+            <div class="pp-stat-value green" id="pp-savings" style="font-size:2.2rem">$---</div>
+            <p style="font-size:0.7rem; color:var(--text-muted); margin-top:4px; line-height:1.4">Interest saved through acceleration.</p>
+          </div>
+
+          <div class="pp-card">
+            <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path></svg> Progress</h3>
+            <div class="pp-pie-container">
+              <div class="pp-pie-wrapper">
+                <canvas id="pp-chart-pie"></canvas>
+                <div id="pp-pie-percent" class="pp-pie-center-text">0%</div>
+              </div>
+            </div>
+            <div id="pp-pie-legend" style="margin-top:16px; font-size:0.7rem; color:var(--text-muted); text-align:center; font-family:var(--font-mono)"></div>
+          </div>
+
+          <div class="pp-recommendation-card">
+            <h3 style="color:var(--accent); margin-bottom:8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.663 17h4.674"></path><path d="M10 20h4"></path><path d="M9 13a4.5 4.5 0 1 1 6 0 4.5 4.5 0 0 1-3 4.093c-1.332.407-3 2.179-3 3.907"></path></svg> Smart Strategy</h3>
+            <p id="pp-recommendation-text" style="font-size:0.75rem; line-height:1.6; color:var(--text-2); margin:0"></p>
+            <div id="pp-status-msg" style="font-size:0.65rem; color:var(--text-muted); margin-top:auto"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings Panel -->
+      <div class="pp-settings" id="pp-settings">
+        <h3 style="color:var(--accent); margin:0; font-family:var(--font-display)">Settings <span style="color:var(--text-muted); font-weight:400; font-size:0.8rem">· ${host}</span></h3>
+        <div><label>Loan Type</label><select id="set-loan-type"><option value="mortgage">Mortgage</option><option value="student">Student Loan</option><option value="auto">Auto Loan</option><option value="personal">Personal Loan</option><option value="other">Other</option></select></div>
+        <div><label>Original Amount ($)</label><input type="number" id="set-orig-amount"></div>
+        <div><label>Interest Rate (% APR)</label><input type="number" id="set-rate" step="0.1"></div>
+        <div><label>Monthly Payment ($)</label><input type="number" id="set-payment"></div>
+        <div><label>First Payment Date</label><input type="date" id="set-start-date"></div>
+        <button class="pp-btn" id="pp-save-settings">Save Settings</button>
+        <hr style="border:none; border-top:1px solid var(--border)">
+        <button class="pp-btn-danger" id="pp-reset-all">Reset All Settings</button>
+        <div style="font-size:0.7rem; color:rgba(239,68,68,0.6); text-align:center">Clears all connections and loan terms for this site.</div>
+      </div>
+    </div>
+
+
+
+    <!-- ═══ ONBOARDING ═══ -->
+    <div class="pp-onboarding" id="pp-onboarding">
+      <div class="pp-ob-card">
+        <button class="pp-ob-close" id="pp-ob-close">✕</button>
+        <div class="pp-stepper" id="pp-stepper">
+          <div class="pp-dot active" data-step="0"></div>
+          <div class="pp-dot" data-step="1"></div>
+          <div class="pp-dot" data-step="2"></div>
+        </div>
+
+        <!-- Step 0: Detect Balance -->
+        <div class="pp-ob-step active" data-step="0">
+          <div class="pp-ob-title">💰 Balance Detected</div>
+          <p class="pp-ob-text">We found potential loan balances on this page. Select the correct one, or pick it manually.</p>
+          <div class="pp-suggestions" id="pp-suggestions"></div>
+          <div style="margin: 15px 0; display:flex; flex-direction:column; gap:8px; text-align:left">
+            <label style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; font-family: var(--font-display); font-weight: 600;">Or Enter Manually</label>
+            <input type="number" id="pp-ob-manual-amount" placeholder="Current Balance ($)" style="width: 100%; background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: white; padding: 11px 14px; border-radius: 12px; outline: none; font-size: 0.9rem; font-family: inherit;">
+          </div>
+          <div class="pp-ob-footer">
+            <button class="pp-ob-btn" id="pp-ob-confirm" disabled style="width:100%">Use This Balance</button>
+          </div>
+        </div>
+
+        <!-- Step 1: Loan Details -->
+        <div class="pp-ob-step" data-step="1">
+          <div class="pp-ob-title">📋 Loan Details</div>
+          <p class="pp-ob-text">Tell us about this loan so we can calculate your payoff path.</p>
+          <div class="pp-ob-form">
+            <div>
+              <label>Loan Type</label>
+              <select id="ob-loan-type"><option value="mortgage">Mortgage</option><option value="student">Student Loan</option><option value="auto">Auto Loan</option><option value="personal">Personal Loan</option><option value="other">Other</option></select>
+            </div>
+            <div class="pp-ob-row">
+              <div><label>Original Amount ($)</label><input type="number" id="ob-orig-amount" placeholder="260000"></div>
+              <div><label>Interest Rate (% APR)</label><input type="number" id="ob-rate" placeholder="6.0" step="0.1"></div>
+            </div>
+            <div class="pp-ob-row">
+              <div><label>Monthly Payment ($)</label><input type="number" id="ob-payment" placeholder="1558"></div>
+              <div><label>Loan Term (years)</label><input type="number" id="ob-term" placeholder="30"></div>
+            </div>
+            <div><label>First Payment Date</label><input type="date" id="ob-start-date"></div>
+          </div>
+          <div class="pp-ob-footer">
+            <button class="pp-ob-btn" id="pp-ob-finish">Finish Setup</button>
+            <button class="pp-ob-btn secondary" id="pp-ob-back0">Back</button>
+          </div>
+        </div>
+
+        <!-- Step 2: Ready -->
+        <div class="pp-ob-step" data-step="2">
+          <div class="pp-ob-title">🎉 You're All Set!</div>
+          <p class="pp-ob-text">PayoffPath is ready to track your loan and show you how to pay it off faster.</p>
+          <div id="pp-ob-summary" style="background:rgba(52,211,153,0.08); border:1px solid rgba(52,211,153,0.2); border-radius:16px; padding:20px; text-align:left; font-size:0.9rem; color:var(--text)"></div>
+          <div class="pp-ob-footer">
+            <button class="pp-ob-btn" id="pp-ob-open-dash">Open Dashboard</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MODULE 3: SCANNER — Find dollar amounts on page
+// ═══════════════════════════════════════════════════════════════
+function scanPageForAmounts() {
+  const amounts = [];
+  const seen = new Set();
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
+  const regex = /-?\$?[\d,]+\.?\d*/g; // Increased robustness for negative/unformatted
+
+  while (walker.nextNode()) {
+    const node = walker.currentNode;
+    const el = node.parentElement;
+    if (!el || el.closest('script, style, noscript')) continue;
+    const style = window.getComputedStyle(el);
+    if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') continue;
+
+    let match;
+    while ((match = regex.exec(node.textContent)) !== null) {
+      const raw = match[0];
+      const val = parseFloat(raw.replace(/[$,]/g, ''));
+      const absVal = Math.abs(val);
+      if (!isNaN(val) && absVal >= 100 && !seen.has(val)) {
+        seen.add(val);
+        amounts.push({ value: val, text: raw, element: el });
+      }
+    }
+  }
+
+  // Sort by absolute value descending
+  amounts.sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
+  return amounts.slice(0, 10);
+}
+
+
+
+// ═══════════════════════════════════════════════════════════════
+//  MODULE 4: FULL UI — Build + wire everything
+// ═══════════════════════════════════════════════════════════════
+function buildFullUI() {
+  if (document.getElementById('payoffpath-root')) return;
+
+  const root = document.createElement('div');
+  root.id = 'payoffpath-root';
+  root.style.cssText = 'position:relative; z-index:2147483647;';
+  const shadow = root.attachShadow({ mode: 'open' });
+
+  const style = document.createElement('style');
+  style.textContent = PP_CSS;
+
+  const container = document.createElement('div');
+  container.innerHTML = buildHTML();
+
+  shadow.appendChild(style);
+  shadow.appendChild(container);
+  document.body.appendChild(root);
+
+  // ── Refs ──
+  const $ = (id) => shadow.getElementById(id);
+  const bubble = $('pp-bubble');
+  const modal = $('pp-modal');
+  const onboarding = $('pp-onboarding');
+  const settings = $('pp-settings');
+
+  const els = {
+    orig: $('pp-orig'), balance: $('pp-balance'), percent: $('pp-percent'),
+    bar: $('pp-bar'), savings: $('pp-savings'),
+    slideMonthly: $('pp-slide-monthly'), slideDrop: $('pp-slide-drop'),
+    lblMonthly: $('pp-lbl-monthly'), lblDrop: $('pp-lbl-drop'),
+    timeSaved: $('pp-time-saved'), payoffDate: $('pp-payoff-date'),
+    tableBody: $('pp-table-body'), tableHead: $('pp-table-head'),
+    statusMsg: $('pp-status-msg'),
+    recommendation: $('pp-recommendation-text'), pieLegend: $('pp-pie-legend'),
+    origLabel: $('pp-orig-label'), piePercent: $('pp-pie-percent'),
+    toggleHistory: $('pp-toggle-history')
+  };
+
+  let charts = { line: null, pie: null };
+  let detectedBalance = null;
+  let showHistory = false;
+
+  // ── Stepper ──
+  const steps = shadow.querySelectorAll('.pp-ob-step');
+  const dots = shadow.querySelectorAll('.pp-dot');
+  function setStep(idx) {
+    steps.forEach((s, i) => { s.classList.toggle('active', i === idx); });
+    dots.forEach((d, i) => {
+      d.classList.remove('active', 'done');
+      if (i === idx) d.classList.add('active');
+      else if (i < idx) d.classList.add('done');
+    });
+  }
+
+  // ── Scanner: populate suggestions ──
+  function showSuggestions() {
+    const container = $('pp-suggestions');
+    container.innerHTML = '';
+    const amounts = scanPageForAmounts();
+    if (amounts.length === 0) {
+      container.innerHTML = '<p style="color:var(--text-muted); font-size:0.9rem">No amounts detected. Please try reloading the page or check the selector.</p>';
+      return;
+    }
+    amounts.forEach((a, i) => {
+      const token = document.createElement('div');
+      token.className = 'pp-suggestion';
+      token.innerHTML = `<span style="font-weight:700; color:var(--primary); font-size:1.1rem">${a.text}</span><span style="font-size:0.8rem; color:var(--text-muted)">Click to select</span>`;
+      token.onclick = () => {
+        shadow.querySelectorAll('.pp-suggestion').forEach(s => s.classList.remove('selected'));
+        token.classList.add('selected');
+        detectedBalance = { value: a.value, selector: '' };
+        $('pp-ob-manual-amount').value = ''; // Clear manual if selection picked
+        $('pp-ob-confirm').disabled = false;
+      };
+      if (i === 0) {
+        token.classList.add('selected');
+        detectedBalance = { value: a.value, selector: '' };
+        $('pp-ob-confirm').disabled = false;
+      }
+      container.appendChild(token);
+    });
+  }
+
+  // ── Manual Input: handle manual entry ──
+  $('pp-ob-manual-amount').oninput = (e) => {
+    const val = parseFloat(e.target.value);
+    if (!isNaN(val) && val > 0) {
+      detectedBalance = { value: val, selector: '' };
+      $('pp-ob-confirm').disabled = false;
+      // Deselect suggestions
+      shadow.querySelectorAll('.pp-suggestion').forEach(s => s.classList.remove('selected'));
+    } else if (!shadow.querySelector('.pp-suggestion.selected')) {
+      $('pp-ob-confirm').disabled = true;
+    }
+  };
+
+
+
+  // ── Dashboard calculation ──
+  function runCalculation() {
+    const hostname = window.location.hostname;
+    chrome.storage.local.get(['siteOverrides', 'loanData'], (res) => {
+      const cfg = res.siteOverrides?.[hostname];
+      if (!cfg) return;
+
+      const balance = parseFloat(res.loanData?.ledgerBalance) || cfg.origAmount || 0;
+      const rate = parseFloat(cfg.rate) || 0;
+      const origAmount = parseFloat(cfg.origAmount) || balance || 0;
+      let monthlyPayment = parseFloat(cfg.monthlyPayment) || 0;
+      const startDate = cfg.startDate;
+
+      // Fallback: If payment is missing or too low to cover interest
+      const minPayment = (balance * (rate / 100 / 12)) + 1;
+      if (monthlyPayment < minPayment) {
+        monthlyPayment = LoanCalculator.calculateMonthlyPayment(origAmount || balance, rate || 7, 30);
+      }
+
+      const extraMonthly = parseFloat(els.slideMonthly.value) || 0;
+      const lumpSum = parseFloat(els.slideDrop.value) || 0;
+
+      els.lblMonthly.textContent = '+$' + extraMonthly.toLocaleString();
+      els.lblDrop.textContent = '+$' + lumpSum.toLocaleString();
+
+      // Baseline (no extra)
+      const baseline = LoanCalculator.getAmortizationStats(balance, rate, monthlyPayment, 0, 0);
+      // Optimized (with extra)
+      const optimized = LoanCalculator.getAmortizationStats(balance, rate, monthlyPayment, extraMonthly, lumpSum);
+
+      const saved = Math.max(0, baseline.totalInterest - optimized.totalInterest);
+      const monthsSaved = Math.max(0, baseline.months - optimized.months);
+      const pctPaid = origAmount > 0 ? Math.min(100, (1 - balance / origAmount) * 100).toFixed(1) : 0;
+
+      // Historical Path
+      let history = [];
+      if (startDate && origAmount > balance) {
+        const sDate = new Date(startDate);
+        const now = new Date();
+        const monthsDiff = (now.getFullYear() - sDate.getFullYear()) * 12 + (now.getMonth() - sDate.getMonth());
+
+        // Simulating standard path from orig to balance
+        let hBalance = origAmount;
+        let hTotalInterest = 0;
+        let hTotalPrincipal = 0;
+        const monthlyRate = rate / 100 / 12;
+        for (let i = 0; i < monthsDiff; i++) {
+          const interest = hBalance * monthlyRate;
+          const principalPart = monthlyPayment - interest;
+          hTotalInterest += interest;
+          hTotalPrincipal += principalPart;
+          history.push({
+            month: i - monthsDiff, // negative months relative to today
+            balance: hBalance,
+            interestPaid: hTotalInterest,
+            principalPaid: hTotalPrincipal,
+            isHistory: true
+          });
+          hBalance -= principalPart;
+          if (hBalance <= balance) break; // Close enough to current
+        }
+      }
+
+      els.orig.textContent = '$' + Math.round(origAmount).toLocaleString();
+      els.origLabel.textContent = `Original Loan (${rate}%)`;
+      els.balance.textContent = '$' + Math.round(balance).toLocaleString();
+      els.percent.textContent = pctPaid + '%';
+      els.bar.style.width = pctPaid + '%';
+      els.savings.textContent = '$' + Math.round(saved).toLocaleString();
+
+      const yrs = Math.floor(monthsSaved / 12);
+      const mos = monthsSaved % 12;
+      els.timeSaved.textContent = yrs > 0 ? `${yrs}y ${mos}m` : `${mos} Months`;
+
+      const payoffDate = new Date();
+      payoffDate.setMonth(payoffDate.getMonth() + optimized.months);
+      els.payoffDate.textContent = payoffDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+
+      if (startDate) {
+        els.statusMsg.textContent = `Tracking since ${new Date(startDate).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`;
+      }
+
+      // Recommendation
+      if (extraMonthly > 0 || lumpSum > 0) {
+        els.recommendation.textContent = `By paying an extra $${(extraMonthly + lumpSum).toLocaleString()}, you'll save $${Math.round(saved).toLocaleString()} in interest and be debt-free ${yrs > 0 ? yrs + ' years' : ''} ${mos} months sooner. This is a strong financial move.`;
+      } else {
+        els.recommendation.textContent = `Use the simulation sliders to see how extra payments can accelerate your payoff and save thousands in interest.`;
+      }
+
+      // Table
+      const thead = els.tableHead;
+      if (thead && thead.innerHTML === '') {
+        thead.innerHTML = '<tr><th>Pmnt #</th><th>Month</th><th>Balance</th><th>Interest</th><th>Equity</th></tr>';
+      }
+      const tbody = els.tableBody;
+      tbody.innerHTML = '';
+
+      // Prepare data for table
+      const lastHist = history[history.length - 1] || { interestPaid: 0, principalPaid: 0 };
+      const todayRow = {
+        month: 0,
+        balance: balance,
+        interestPaid: lastHist.interestPaid,
+        principalPaid: lastHist.principalPaid,
+        isToday: true
+      };
+      const combinedSched = [...history, todayRow, ...optimized.schedule];
+
+      // Ensure toggle exists and works
+      els.toggleHistory.onclick = () => {
+        showHistory = !showHistory;
+        els.toggleHistory.textContent = showHistory ? 'Hide History' : 'Show History';
+        runCalculation();
+      };
+      els.toggleHistory.textContent = showHistory ? 'Hide History' : 'Show History';
+
+      for (let i = 0; i < combinedSched.length; i++) {
+        const row = combinedSched[i];
+        if (row.isHistory && !showHistory) continue;
+
+        const tr = document.createElement('tr');
+        if (row.isHistory) tr.style.opacity = '0.6';
+        if (row.isToday) tr.classList.add('pp-row-current');
+
+        const d = new Date(); d.setMonth(d.getMonth() + row.month);
+
+        // Pmnt # calculation: If startDate is 24 months ago, Today is pmnt #25
+        const historyLen = history.length;
+        const pmntNum = historyLen + row.month + (startDate ? 1 : 0);
+        const pmntDisplay = pmntNum > 0 ? `#${pmntNum}` : '-';
+
+        tr.innerHTML = `
+          <td>${pmntDisplay}</td>
+          <td>${d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} ${row.isToday ? '<b>(Current)</b>' : (row.isHistory ? '(Past)' : '')}</td>
+          <td>$${Math.round(row.balance).toLocaleString()}</td>
+          <td>$${Math.round(row.interestPaid).toLocaleString()}</td>
+          <td>$${Math.round(row.principalPaid).toLocaleString()}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+
+      // Charts: Stable Initialization
+      requestAnimationFrame(() => {
+        renderCharts(balance, baseline, optimized, origAmount, rate, startDate, monthlyPayment, history);
+      });
+    });
+  }
+
+  function renderCharts(currentBalance, baseline, optimized, origAmount, rate, startDate, monthlyPayment, history = []) {
+    const Chart = window.Chart;
+    if (!Chart) return;
+
+    const lineCtx = $('pp-chart-line');
+    const pieCtx = $('pp-chart-pie');
+    if (!lineCtx || !pieCtx) return;
+
+    const rect = lineCtx.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) {
+      if (retryCount < 30) { // Limit retries to ~0.5s
+        requestAnimationFrame(() => renderCharts(currentBalance, baseline, optimized, origAmount, rate, startDate, monthlyPayment, history));
+      }
+      return;
+    }
+
+    if (charts.line) charts.line.destroy();
+    if (charts.pie) charts.pie.destroy();
+
+    const isLight = root.classList.contains('light-theme');
+    const textColor = isLight ? '#475569' : '#94a3b8';
+    const gridColor = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)';
+    const accentColor = isLight ? '#059669' : '#10b981';
+
+    // Derive Data (Include history if available)
+    const fullBaseline = [...history, ...baseline.schedule];
+    const fullOptimized = [...history, ...optimized.schedule];
+
+    // x-axis step logic
+    const totalMonths = fullBaseline.length;
+    const step = totalMonths > 240 ? 12 : 6;
+
+    const labels = fullBaseline.filter((_, i) => i % step === 0).map(d => d.month);
+    const baseData = fullBaseline.filter((_, i) => i % step === 0).map(d => d.balance);
+
+    // Map Optimized to same labels, padding with 0 when paid off
+    const optData = labels.map(m => {
+      const found = fullOptimized.find(s => s.month === m);
+      return found ? found.balance : 0;
+    });
+
+    charts.line = new Chart(lineCtx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          { label: 'Standard', data: baseData, borderColor: isLight ? '#94a3b8' : 'rgba(148,163,184,0.3)', borderWidth: 2, borderDash: [6, 4], fill: false, tension: 0.4, pointRadius: 0 },
+          { label: 'Accelerated', data: optData, borderColor: accentColor, borderWidth: 3, fill: { target: 'origin', above: isLight ? 'rgba(16,185,129,0.04)' : 'rgba(16,185,129,0.06)' }, tension: 0.4, pointRadius: 0 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { intersect: false, mode: 'index' },
+        plugins: {
+          legend: { labels: { color: textColor, font: { size: 10, weight: '600', family: 'DM Sans' }, usePointStyle: true, pointStyle: 'circle', padding: 20 } },
+          tooltip: {
+            backgroundColor: isLight ? '#ffffff' : '#111827',
+            titleColor: isLight ? '#0f172a' : '#ffffff',
+            bodyColor: isLight ? '#334155' : '#e2e8f0',
+            borderColor: isLight ? '#e2e8f0' : 'rgba(255,255,255,0.1)',
+            borderWidth: 1, padding: 12, cornerRadius: 8,
+            titleFont: { family: 'Space Grotesk', size: 12, weight: 'bold' },
+            bodyFont: { family: 'JetBrains Mono', size: 11 },
+            callbacks: { label: ctx => ` ${ctx.dataset.label}: $${ctx.parsed.y.toLocaleString()}` }
+          }
+        },
+        scales: {
+          x: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 10, family: 'Space Grotesk' } }, title: { display: true, text: 'Months (Projected)', color: textColor, font: { weight: '600' } } },
+          y: { grid: { color: gridColor }, ticks: { color: textColor, font: { size: 10, family: 'JetBrains Mono' }, callback: v => '$' + (v / 1000).toFixed(0) + 'k' }, title: { display: true, text: 'Remaining Balance', color: textColor, font: { weight: '600' } } }
+        }
+      }
+    });
+
+    // Pie chart
+    if (charts.pie) charts.pie.destroy();
+
+    const paid = origAmount - currentBalance;
+    const remaining = currentBalance;
+    const progressPct = origAmount > 0 ? ((paid / origAmount) * 100).toFixed(0) : 0;
+    els.piePercent.textContent = `${progressPct}%`;
+
+    charts.pie = new Chart(pieCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Paid Off', 'Remaining'],
+        datasets: [{
+          data: [paid, remaining],
+          backgroundColor: isLight ? ['#10b981', '#cbd5e1'] : ['#6ee7b7', '#1e293b'],
+          borderWidth: 0,
+          borderRadius: 4,
+          hoverOffset: 6
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '78%',
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: isLight ? '#ffffff' : '#0b1121',
+            titleColor: isLight ? '#111827' : '#ffffff',
+            bodyColor: isLight ? '#374151' : '#e2e8f0',
+            borderColor: isLight ? '#e2e8f0' : '#1e293b',
+            borderWidth: 1,
+            cornerRadius: 10,
+            padding: 10,
+            callbacks: { label: ctx => ' $' + ctx.parsed.toLocaleString() }
+          }
+        }
+      }
+    });
+    const paidDot = isLight ? '#10b981' : '#6ee7b7';
+    const remDot = isLight ? '#cbd5e1' : '#1e293b';
+    els.pieLegend.innerHTML = `
+      <div style="display:flex; justify-content:center; gap:20px; font-weight:600">
+        <span><span style="color:${paidDot}">●</span> Paid</span>
+        <span><span style="color:${remDot}">●</span> Remaining</span>
+      </div>
+    `;
+  }
+
+  function updateDashboard() { runCalculation(); }
+
+  // ── Event Wiring ──
+
+  // Bubble toggle
+  bubble.onclick = () => {
+    const hostname = window.location.hostname;
+    chrome.storage.local.get(['siteOverrides', 'prefs'], (res) => {
+      if (res.prefs?.theme === 'light') root.classList.add('light-theme');
+      else root.classList.remove('light-theme');
+
+      const ov = res.siteOverrides?.[hostname];
+      if (ov && ov.rate > 0 && ov.origAmount > 0) {
+        modal.style.display = 'flex';
+        updateDashboard();
+      } else {
+        onboarding.style.display = 'flex';
+        setStep(0);
+        showSuggestions();
+      }
+    });
+  };
+
+  // Theme Toggle
+  $('pp-theme-toggle').onclick = () => {
+    root.classList.toggle('light-theme');
+    const theme = root.classList.contains('light-theme') ? 'light' : 'dark';
+    chrome.storage.local.get(['prefs'], (res) => {
+      const prefs = res.prefs || {};
+      prefs.theme = theme;
+      chrome.storage.local.set({ prefs });
+    });
+    runCalculation(); // Refresh charts with new colors
+  };
+
+  // Close buttons
+  $('pp-close').onclick = () => { modal.style.display = 'none'; settings.style.display = 'none'; };
+  $('pp-ob-close').onclick = () => { onboarding.style.display = 'none'; };
+
+
+
+  // Sliders
+  els.slideMonthly.oninput = runCalculation;
+  els.slideDrop.oninput = runCalculation;
+
+  $('pp-ob-confirm').onclick = () => setStep(1);
+  $('pp-ob-back0').onclick = () => setStep(0);
+
+  // Onboarding: Step 1 → finish
+  $('pp-ob-finish').onclick = () => {
+    const hostname = window.location.hostname;
+    const origAmount = parseFloat($('ob-orig-amount').value);
+    const rate = parseFloat($('ob-rate').value);
+    const payment = parseFloat($('ob-payment').value);
+    const term = parseFloat($('ob-term').value);
+    const startDate = $('ob-start-date').value;
+    const loanType = $('ob-loan-type').value;
+
+    if (!origAmount || !rate || !payment) {
+      alert('Please fill in the required fields: Original Amount, Interest Rate, and Monthly Payment.');
+      return;
+    }
+
+    const balanceValue = detectedBalance ? detectedBalance.value : origAmount;
+
+    // Save overrides
+    chrome.storage.local.get(['siteOverrides'], (res) => {
+      const overrides = res.siteOverrides || {};
+      overrides[hostname] = {
+        loanType, origAmount, rate, termYears: term || 30,
+        monthlyPayment: payment, startDate: startDate || new Date().toISOString().slice(0, 10),
+        nickname: loanType.charAt(0).toUpperCase() + loanType.slice(1) + ' Loan'
+      };
+
+      const loanData = {
+        ledgerBalance: balanceValue, loanAmount: origAmount,
+        monthlyPayment: payment, interestRate: rate,
+        loanType, isRealData: !!detectedBalance
+      };
+
+      chrome.storage.local.set({ siteOverrides: overrides, loanData }, () => {
+        // Show summary
+        const summary = $('pp-ob-summary');
+        summary.innerHTML = `
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px">
+            <div><strong style="color:var(--text-muted)">Type:</strong> ${loanType}</div>
+            <div><strong style="color:var(--text-muted)">Balance:</strong> $${balanceValue.toLocaleString()}</div>
+            <div><strong style="color:var(--text-muted)">Original:</strong> $${origAmount.toLocaleString()}</div>
+            <div><strong style="color:var(--text-muted)">Rate:</strong> ${rate}%</div>
+            <div><strong style="color:var(--text-muted)">Payment:</strong> $${payment.toLocaleString()}/mo</div>
+            <div><strong style="color:var(--text-muted)">Term:</strong> ${term || 30} years</div>
+          </div>`;
+        setStep(2);
+      });
+    });
+  };
+
+  // Onboarding: Step 2 → open dashboard
+  $('pp-ob-open-dash').onclick = () => {
+    onboarding.style.display = 'none';
+    modal.style.display = 'flex';
+    updateDashboard();
+  };
+
+  // Settings
+  $('pp-settings-btn').onclick = () => {
+    const vis = settings.style.display === 'flex';
+    settings.style.display = vis ? 'none' : 'flex';
+    if (!vis) {
+      const hostname = window.location.hostname;
+      chrome.storage.local.get(['siteOverrides'], (res) => {
+        const cfg = res.siteOverrides?.[hostname];
+        if (cfg) {
+          $('set-loan-type').value = cfg.loanType || 'mortgage';
+          $('set-orig-amount').value = cfg.origAmount || '';
+          $('set-rate').value = cfg.rate || '';
+          $('set-payment').value = cfg.monthlyPayment || '';
+          $('set-start-date').value = cfg.startDate || '';
+        }
+      });
+    }
+  };
+
+  $('pp-save-settings').onclick = () => {
+    const hostname = window.location.hostname;
+    chrome.storage.local.get(['siteOverrides'], (res) => {
+      const overrides = res.siteOverrides || {};
+      overrides[hostname] = {
+        ...(overrides[hostname] || {}),
+        loanType: $('set-loan-type').value,
+        origAmount: parseFloat($('set-orig-amount').value) || 0,
+        rate: parseFloat($('set-rate').value) || 0,
+        monthlyPayment: parseFloat($('set-payment').value) || 0,
+        startDate: $('set-start-date').value
+      };
+      chrome.storage.local.set({ siteOverrides: overrides }, () => {
+        settings.style.display = 'none';
+        updateDashboard();
+      });
+    });
+  };
+
+  $('pp-reset-all').onclick = () => {
+    if (confirm('Reset ALL settings for this site? This cannot be undone.')) {
+      const hostname = window.location.hostname;
+      chrome.storage.local.get(['siteOverrides', 'siteSelectors'], (res) => {
+        const overrides = res.siteOverrides || {};
+        const selectors = res.siteSelectors || {};
+        delete overrides[hostname];
+        delete selectors[hostname];
+        chrome.storage.local.set({ siteOverrides: overrides, siteSelectors: selectors }, () => {
+          chrome.storage.local.remove(['loanData'], () => {
+            modal.style.display = 'none';
+            settings.style.display = 'none';
+            detectedBalance = null;
+            onboarding.style.display = 'flex';
+            setStep(0);
+            showSuggestions();
+          });
+        });
+      });
+    }
+  };
+
+  // Close settings when clicking modal background
+  modal.onclick = (e) => {
+    if (settings.style.display === 'flex' && !settings.contains(e.target) && e.target.id !== 'pp-settings-btn') {
+      settings.style.display = 'none';
+    }
+  };
+
+  // ── AUTO-SHOW: decide what to show on first open ──
+  const hostname = window.location.hostname;
+  chrome.storage.local.get(['siteOverrides'], (res) => {
+    const ov = res.siteOverrides?.[hostname];
+    if (ov && ov.rate > 0 && ov.origAmount > 0) {
+      modal.style.display = 'flex';
+      updateDashboard();
+    } else {
+      onboarding.style.display = 'flex';
+      setStep(0);
+      showSuggestions();
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MODULE 5: BOOTSTRAP — Bubble only on page load
+// ═══════════════════════════════════════════════════════════════
+function injectBubbleOnly() {
+  if (document.getElementById('payoffpath-root')) return;
+
+  const root = document.createElement('div');
+  root.id = 'payoffpath-root';
+  root.style.cssText = 'position:relative; z-index:2147483647;';
+  const shadow = root.attachShadow({ mode: 'open' });
+
+  const style = document.createElement('style');
+  style.textContent = `
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+    .pp-bubble {
+      pointer-events: auto;
+      position: fixed; bottom: 24px; right: 24px; width: 48px; height: 48px;
+      background: linear-gradient(135deg, #34d399, #10b981);
+      border-radius: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 6px 24px rgba(52,211,153,0.3); z-index: 2147483640;
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .pp-bubble:hover { transform: translateY(-3px) scale(1.08); }
+  `;
+
+  const bubble = document.createElement('div');
+  bubble.className = 'pp-bubble';
+  bubble.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>`;
+
+  bubble.onclick = () => {
+    root.remove();
+    buildFullUI();
+  };
+
+  shadow.appendChild(style);
+  shadow.appendChild(bubble);
+  document.body.appendChild(root);
+}
+
+// ── Entry Point ──
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', injectBubbleOnly);
+} else {
+  injectBubbleOnly();
+}

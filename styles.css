@@ -1,0 +1,291 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+    /* Dark Theme (Default) */
+    --accent: #6ee7b7;
+    --accent-2: #34d399;
+    --accent-glow: rgba(110, 231, 183, 0.3);
+    --cyan: #67e8f9;
+    --cyan-glow: rgba(103, 232, 249, 0.2);
+    --bg-0: #0b1121;
+    --bg-1: #101b30;
+    --bg-2: #131d33;
+    --bg-3: #182440;
+    --surface: #162036;
+    --surface-hover: #1e293b;
+    --glass: #111a2e;
+    --glass-border: rgba(255, 255, 255, 0.12);
+    --border: rgba(255, 255, 255, 0.1);
+    --border-accent: rgba(110, 231, 183, 0.35);
+    --text: #ffffff;
+    --text-2: #e2e8f0;
+    --text-muted: #cbd5e1;
+    /* Boosted contrast */
+    --radius: 16px;
+    --radius-lg: 22px;
+    --radius-sm: 10px;
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+}
+
+body.light-theme {
+    /* Light Theme Overlay */
+    --bg-0: #f8fafc;
+    --bg-1: #ffffff;
+    --bg-2: #ffffff;
+    --bg-3: #f1f5f9;
+    --surface: #f1f5f9;
+    --surface-hover: #e2e8f0;
+    --glass: #ffffff;
+    --glass-border: rgba(0, 0, 0, 0.08);
+    --border: rgba(0, 0, 0, 0.08);
+    --border-accent: #059669;
+    --text: #111827;
+    --text-2: #374151;
+    --text-muted: #4b5563;
+    --accent: #10b981;
+    --accent-2: #059669;
+    --accent-glow: rgba(16, 185, 129, 0.15);
+    --cyan: #0891b2;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    width: 380px;
+    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg-0);
+    color: var(--text);
+    min-height: 500px;
+    padding: 20px;
+    -webkit-font-smoothing: antialiased;
+}
+
+.header {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 24px;
+}
+
+h1 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    font-family: var(--font-display);
+    color: #fff;
+}
+
+/* ── Stats Grid ── */
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.card {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+    transition: all 0.25s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, transparent 60%);
+    pointer-events: none;
+}
+
+.card:hover {
+    border-color: var(--border-accent);
+    box-shadow: 0 4px 20px rgba(110, 231, 183, 0.05);
+}
+
+.card-label {
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 4px;
+    font-family: var(--font-display);
+    font-weight: 500;
+}
+
+.card-value {
+    font-size: 1.05rem;
+    font-weight: 700;
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+    color: #fff;
+}
+
+.highlight {
+    background: linear-gradient(135deg, var(--accent), #67e8f9);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* ── Controls ── */
+.control-section {
+    margin-top: 20px;
+    background: var(--bg-2);
+    border-radius: 14px;
+    padding: 16px;
+    border: 1px solid var(--border-accent);
+}
+
+.control-label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-weight: 500;
+    font-size: 0.82rem;
+    color: var(--text-2);
+}
+
+.control-label .highlight {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: 0.8rem;
+}
+
+input[type="range"] {
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    cursor: pointer;
+    appearance: none;
+    background: rgba(255, 255, 255, 0.08);
+    outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border: 3px solid var(--bg-0);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 10px var(--accent-glow);
+}
+
+/* ── Charts ── */
+.chart-container-split {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+    height: 180px;
+}
+
+.chart-box {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px;
+}
+
+.main-chart {
+    flex: 2;
+}
+
+.pie-chart {
+    flex: 1;
+}
+
+.pie-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.pie-center-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--text);
+    pointer-events: none;
+}
+
+/* ── Time Saved Banner ── */
+.time-saved-banner {
+    background: linear-gradient(90deg, rgba(110, 231, 183, 0.08) 0%, transparent 100%);
+    border-left: 3px solid var(--accent);
+    padding: 10px 14px;
+    border-radius: 3px 12px 12px 3px;
+    margin-bottom: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-2);
+}
+
+.time-saved-banner span {
+    background: linear-gradient(135deg, var(--accent), #67e8f9);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 700;
+}
+
+/* ── Footer ── */
+.footer {
+    margin-top: 20px;
+    text-align: center;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+/* ── Empty / Not Enabled States ── */
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.empty-state h2 {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    margin-bottom: 10px;
+    color: #fff;
+}
+
+.empty-state p {
+    margin-bottom: 16px;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    line-height: 1.6;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent-2), #059669);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s;
+    font-family: inherit;
+    font-size: 0.85rem;
+    box-shadow: 0 2px 12px rgba(52, 211, 153, 0.25);
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(52, 211, 153, 0.35);
+}

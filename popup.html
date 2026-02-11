@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PayoffPath</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="chart.js"></script>
+</head>
+
+<body>
+    <div id="app">
+        <div class="header">
+            <h1>PayoffPath</h1>
+            <p style="font-size:0.75rem; color:var(--text-muted); margin-top:4px">Universal Loan Payoff Accelerator</p>
+        </div>
+
+        <div id="content" style="display: none;">
+            <div class="stats-grid">
+                <div class="card">
+                    <div class="card-label">Current Balance</div>
+                    <div id="currBalance" class="card-value">$---</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">Interest Savings</div>
+                    <div id="totalSavings" class="card-value highlight">$0</div>
+                </div>
+                <div class="card">
+                    <div class="card-label" id="origLoanLabel">Original Loan</div>
+                    <div id="origPayoff" class="card-value">$---</div>
+                </div>
+                <div class="card">
+                    <div class="card-label">Est. Payoff</div>
+                    <div id="newPayoff" class="card-value highlight">---</div>
+                </div>
+            </div>
+
+            <div class="time-saved-banner" id="timeSavedBanner">
+                You save <span>0 years</span> of payments!
+            </div>
+
+            <div class="control-section">
+                <div class="control-label">
+                    <span>Extra Monthly Payment</span>
+                    <span id="extraAmountLabel" class="highlight">+$0</span>
+                </div>
+                <input type="range" id="extraSlider" min="0" max="5000" step="50" value="0">
+
+                <div class="control-label" style="margin-top: 20px;">
+                    <span>Lump-Sum Payment</span>
+                    <span id="oneTimeAmountLabel" class="highlight">+$0</span>
+                </div>
+                <input type="range" id="oneTimeSlider" min="0" max="50000" step="500" value="0">
+            </div>
+
+            <div class="chart-container-split">
+                <div class="chart-box main-chart">
+                    <canvas id="payoffChart"></canvas>
+                </div>
+                <div class="chart-box pie-chart">
+                    <div class="pie-wrapper">
+                        <canvas id="interestPieChart"></canvas>
+                        <div id="piePercentLabel" class="pie-center-text">0%</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="footer">
+                <div style="display:flex; justify-content:center; gap:15px; margin-bottom:10px">
+                    <a href="https://www.linkedin.com/in/ost4p/" target="_blank"
+                        style="color:var(--text-muted); text-decoration:none; display:flex; align-items:center; gap:5px; font-size:0.75rem">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                            <path
+                                d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
+                        </svg>
+                        Ostap
+                    </a>
+                    <a href="https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=ostaplernatovych@gmail.com&currency_code=USD"
+                        target="_blank"
+                        style="color:#f59e0b; text-decoration:none; font-weight:700; font-size:0.75rem; display:flex; align-items:center; gap:5px">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                        </svg>
+                        Donate
+                    </a>
+                </div>
+                Based on current rates &amp; overrides
+            </div>
+        </div>
+
+        <div id="notEnabled" class="empty-state" style="display: none;">
+            <div style="font-size: 3rem; margin-bottom: 20px;">🛡️</div>
+            <h2>Extension Inactive</h2>
+            <p>PayoffPath is not enabled on this website yet. Click below to allow it to track your loan balance here.
+            </p>
+            <button class="btn-primary" id="btnEnableSite">Enable on this website</button>
+        </div>
+
+        <div id="empty" class="empty-state" style="display: none;">
+            <p>Open your bank or lender's website and click the PayoffPath bubble to get started.</p>
+        </div>
+    </div>
+    <script src="calculator.js"></script>
+    <script src="popup.js"></script>
+</body>
+
+</html>
