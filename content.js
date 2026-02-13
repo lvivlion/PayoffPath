@@ -1,10 +1,10 @@
 /**
- * content.js — PayoffPath v2
+ * content.js — PayoffPath v3
  * Universal loan payoff accelerator.
  * Supports: Mortgage, Student Loan, Auto Loan, Personal Loan, Other.
  */
 
-console.log('PayoffPath v2 Content Script Loaded');
+console.log('PayoffPath v3 Content Script Loaded');
 
 // ═══════════════════════════════════════════════════════════════
 //  MODULE 1: CSS — All shadow DOM styles
