@@ -125,7 +125,10 @@ const PP_CSS = `
     content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, transparent 50%);
     pointer-events: none;
   }
+  :host(.light-theme) .pp-card { border-color: #e2e8f0; box-shadow: 0 4px 20px rgba(0,0,0,0.04); }
+  :host(.light-theme) .pp-card::before { background: linear-gradient(135deg, rgba(99,102,241,0.02) 0%, transparent 50%); }
   .pp-card:hover { border-color: var(--border-accent); transform: translateY(-4px); box-shadow: 0 30px 60px rgba(0,0,0,0.5); }
+  :host(.light-theme) .pp-card:hover { box-shadow: 0 15px 40px rgba(0,0,0,0.08); border-color: #6366f1; }
   .pp-card h3 {
     margin: 0 0 20px; font-size: 0.85rem; color: var(--primary); font-weight: 800;
     text-transform: uppercase; letter-spacing: 0.12em; display: flex; align-items: center; gap: 12px;
@@ -148,6 +151,7 @@ const PP_CSS = `
 
   /* ── Progress ── */
   .pp-progress-bg { height: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden; }
+  :host(.light-theme) .pp-progress-bg { background: #e2e8f0; }
   .pp-progress-bar {
     height: 100%; width: 0%; border-radius: 4px;
     background: linear-gradient(90deg, #6366f1, #a855f7, #6366f1);
@@ -155,6 +159,7 @@ const PP_CSS = `
     transition: width 1.5s cubic-bezier(0.19, 1, 0.22, 1);
     box-shadow: 0 0 15px rgba(99,102,241,0.4);
   }
+  :host(.light-theme) .pp-progress-bar { box-shadow: 0 0 10px rgba(99,102,241,0.2); }
   @keyframes pulseGradient { 0% { background-position: 0% center; } 100% { background-position: 200% center; } }
 
   /* ── v3 Form Controls ── */
@@ -166,6 +171,7 @@ const PP_CSS = `
     width: 100%; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px;
     appearance: none; outline: none; margin: 12px 0; transition: all 0.3s;
   }
+  :host(.light-theme) input[type=range] { background: #e2e8f0; }
   input[type=range]::-webkit-slider-thumb {
     appearance: none; width: 20px; height: 20px;
     background: #ffffff; border: 4px solid var(--primary); border-radius: 50%;
@@ -178,23 +184,32 @@ const PP_CSS = `
     flex: 1; min-height: 250px; overflow-y: auto; border-radius: var(--radius);
     background: rgba(0,0,0,0.15); border: 1px solid var(--border);
   }
+  :host(.light-theme) .pp-table-wrap { background: #f8fafc; border-color: #e2e8f0; }
   .pp-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
   .pp-table th {
     text-align: left; padding: 14px 20px; color: var(--text-muted); font-weight: 800;
     font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em;
-    border-bottom: 1px solid var(--border); position: sticky; top: 0; background: #0f172a; z-index: 10;
+    border-bottom: 1px solid var(--border); position: sticky; top: 0; 
+    background: var(--bg-1); z-index: 10;
   }
-  .pp-table td { padding: 12px 20px; border-bottom: 1px solid rgba(255,255,255,0.01); color: var(--text-2); font-family: var(--font-mono); }
+  :host(.light-theme) .pp-table th { background: #f1f5f9; border-bottom-color: #e2e8f0; color: #64748b; }
+  .pp-table td { padding: 14px 20px; border-bottom: 1px solid var(--border); color: var(--text-2); font-family: var(--font-mono); }
+  :host(.light-theme) .pp-table td { border-bottom-color: #f1f5f9; color: #334155; }
   .pp-table tr:hover { background: rgba(99,102,241,0.05); }
-  .pp-row-current { background: rgba(99,102,241,0.15) !important; border-left: 4px solid var(--primary); }
-  .pp-row-current td { color: #fff; font-weight: 700; border-bottom-color: rgba(99,102,241,0.2); }
+  :host(.light-theme) .pp-table tr:hover { background: rgba(99,102,241,0.04); }
+  
+  .pp-row-current { background: rgba(99,102,241,0.12) !important; border-left: 4px solid var(--primary); position: relative; }
+  .pp-row-current td { color: var(--text); font-weight: 700; }
+  :host(:not(.light-theme)) .pp-row-current td { color: #fff; }
+  :host(.light-theme) .pp-row-current { background: rgba(99,102,241,0.06) !important; }
+  :host(.light-theme) .pp-row-current td { color: #4338ca; font-weight: 800; }
   .pp-row-past.hidden { display: none; }
   .pp-toggle-history {
-    font-size: 0.65rem; color: var(--accent); cursor: pointer; border: 1px solid var(--border-accent);
-    padding: 3px 8px; border-radius: 6px; background: rgba(16,185,129,0.05);
-    transition: all 0.2s; font-family: var(--font-display); font-weight: 600; outline: none;
+    font-size: 0.65rem; color: var(--primary); cursor: pointer; border: 1px solid var(--border-accent);
+    padding: 5px 12px; border-radius: 8px; background: rgba(99,102,241,0.05);
+    transition: all 0.3s; font-weight: 700; outline: none;
   }
-  .pp-toggle-history:hover { background: var(--accent); color: white; }
+  .pp-toggle-history:hover { background: var(--primary); color: white; }
 
   /* ── Charts ── */
   .pp-chart-container { flex: 1; min-height: 260px; position: relative; width: 100%; margin: 16px 0; }
@@ -228,35 +243,39 @@ const PP_CSS = `
   /* ── Settings Panel ── */
   .pp-settings {
     pointer-events: auto;
-    position: absolute; top: 72px; right: 36px; width: 340px;
-    background: #111827; border: 1px solid var(--border-accent); border-radius: var(--radius-lg);
-    background: var(--bg-3);
-    padding: 24px; display: none; flex-direction: column; gap: 12px;
-    box-shadow: 0 24px 60px rgba(0,0,0,0.7), 0 0 40px rgba(110,231,183,0.06);
+    position: absolute; top: 72px; right: 36px; width: 360px;
+    background: var(--bg-1); border: 1px solid var(--border-accent); border-radius: var(--radius-lg);
+    padding: 28px; display: none; flex-direction: column; gap: 14px;
+    box-shadow: 0 30px 70px rgba(0,0,0,0.5), 0 0 40px rgba(99,102,241,0.06);
     z-index: 2147483645; animation: ppSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-    font-family: 'DM Sans', sans-serif; color: var(--text);
+    font-family: inherit; color: var(--text);
   }
+  :host(.light-theme) .pp-settings { background: #ffffff; box-shadow: 0 20px 50px rgba(0,0,0,0.12); border-color: var(--border-accent); }
   @keyframes ppSlideIn { from { transform: translateY(-12px) scale(0.97); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
-  .pp-settings label { font-size: 0.75rem; color: var(--text-muted); font-weight: 500; display: block; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.06em; font-family: var(--font-display); }
+  .pp-settings label { font-size: 0.75rem; color: var(--text-muted); font-weight: 700; display: block; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.08em; }
   .pp-settings input, .pp-settings select {
-    width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border);
-    color: white; padding: 10px 14px; border-radius: var(--radius-sm); outline: none;
-    font-size: 0.85rem; font-family: inherit; transition: all 0.2s;
+    width: 100%; background: var(--surface); border: 1px solid var(--border);
+    color: var(--text); padding: 12px 16px; border-radius: var(--radius-sm); outline: none;
+    font-size: 0.9rem; font-family: inherit; transition: all 0.3s;
   }
-  .pp-settings input:focus, .pp-settings select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+  :host(.light-theme) .pp-settings input,
+  :host(.light-theme) .pp-settings select {
+    background: #f8fafc; border-color: rgba(0,0,0,0.1); color: #020617;
+  }
+  .pp-settings input:focus, .pp-settings select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow); }
   .pp-btn {
-    background: linear-gradient(135deg, var(--accent-2), #059669); border: none; color: white;
-    padding: 11px 16px; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600;
-    transition: all 0.25s; font-family: inherit; font-size: 0.85rem;
-    box-shadow: 0 2px 12px rgba(52,211,153,0.25);
+    background: linear-gradient(135deg, #6366f1, #4f46e5); border: none; color: white;
+    padding: 13px 18px; border-radius: var(--radius-sm); cursor: pointer; font-weight: 700;
+    transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1); font-family: inherit; font-size: 0.9rem;
+    box-shadow: 0 8px 20px rgba(99,102,241,0.3);
   }
-  .pp-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(52,211,153,0.35); }
+  .pp-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(99,102,241,0.4); }
   .pp-btn-danger {
-    background: var(--danger-dim); color: var(--danger); border: 1px solid rgba(251,113,133,0.2);
-    padding: 11px 16px; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600;
-    transition: all 0.25s; font-family: inherit; font-size: 0.85rem;
+    background: rgba(239,68,68,0.08); color: #ef4444; border: 1px solid rgba(239,68,68,0.2);
+    padding: 13px 18px; border-radius: var(--radius-sm); cursor: pointer; font-weight: 700;
+    transition: all 0.3s; font-family: inherit; font-size: 0.9rem;
   }
-  .pp-btn-danger:hover { background: rgba(251,113,133,0.18); border-color: var(--danger); }
+  .pp-btn-danger:hover { background: rgba(239,68,68,0.15); border-color: #ef4444; }
 
   /* ── Onboarding Overlay ── */
   .pp-onboarding {
@@ -493,7 +512,7 @@ function buildHTML() {
 
       <!-- Settings Panel -->
       <div class="pp-settings" id="pp-settings">
-        <h3 style="color:var(--accent); margin:0; font-family:var(--font-display)">Settings <span style="color:var(--text-muted); font-weight:400; font-size:0.8rem">· ${host}</span></h3>
+        <h3 style="color:var(--primary); margin:0"><span style="font-size:1.1rem; margin-right:8px">⚙️</span>Settings <span style="color:var(--text-muted); font-weight:400; font-size:0.8rem">· ${host}</span></h3>
         <div><label>Loan Type</label><select id="set-loan-type"><option value="mortgage">Mortgage</option><option value="student">Student Loan</option><option value="auto">Auto Loan</option><option value="personal">Personal Loan</option><option value="other">Other</option></select></div>
         <div><label>Original Amount ($)</label><input type="number" id="set-orig-amount"></div>
         <div><label>Interest Rate (% APR)</label><input type="number" id="set-rate" step="0.1"></div>
@@ -836,6 +855,8 @@ function buildFullUI() {
         let hBalance = origAmount;
         let hTotalInterest = 0;
         let hTotalPrincipal = 0;
+
+        // We want history starting from month -monthsDiff up to month -1
         for (let i = 0; i < monthsDiff; i++) {
           const interest = hBalance * monthlyRate;
           const principalPart = monthlyPayment - interest;
@@ -850,11 +871,13 @@ function buildFullUI() {
             principalPaid: hTotalPrincipal,
             isHistory: true
           });
-          if (hBalance <= balance) break;
+          // Note: we don't break here even if hBalance <= balance, 
+          // because we want the full standard schedule path as a baseline.
         }
       }
 
       const totalSaved = histSaved + simSaved;
+      const todayPoint = { month: 0, balance: balance, isToday: true, interestPaid: 0, principalPaid: 0 };
 
       // ── Update UI ──
       els.orig.textContent = '$' + Math.round(origAmount).toLocaleString();
@@ -990,20 +1013,31 @@ function buildFullUI() {
     const isLight = root.classList.contains('light-theme');
     const textColor = isLight ? '#475569' : '#94a3b8';
     const gridColor = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)';
-    const accentColor = isLight ? '#059669' : '#10b981';
+    const accentColor = isLight ? '#6366f1' : '#6366f1'; // Use theme primary
+    const primaryGlow = 'rgba(99,102,241,0.2)';
 
     // Derive Data (Include history if available)
-    const fullBaseline = [...history, ...baseline.schedule];
-    const fullOptimized = [...history, ...optimized.schedule];
+    const todayPoint = { month: 0, balance: currentBalance, isToday: true };
+    const fullBaseline = [...history.filter(h => h.month < 0), todayPoint, ...baseline.schedule];
+    const fullOptimized = [...history.filter(h => h.month < 0), todayPoint, ...optimized.schedule];
 
     // x-axis step logic
     const totalMonths = fullBaseline.length;
     const step = totalMonths > 240 ? 12 : 6;
 
-    const labels = fullBaseline.filter((_, i) => i % step === 0).map(d => d.month);
-    const baseData = fullBaseline.filter((_, i) => i % step === 0).map(d => d.balance);
+    // Filter labels but ALWAYS include month 0
+    let labels = fullBaseline
+      .filter((d, i) => (i % step === 0) || d.month === 0)
+      .map(d => d.month);
 
-    // Map Optimized to same labels, padding with 0 when paid off
+    // Sort and unique
+    labels = [...new Set(labels)].sort((a, b) => a - b);
+
+    const baseData = labels.map(m => {
+      const found = fullBaseline.find(s => s.month === m);
+      return found ? found.balance : null;
+    });
+
     const optData = labels.map(m => {
       const found = fullOptimized.find(s => s.month === m);
       return found ? found.balance : 0;
@@ -1014,8 +1048,30 @@ function buildFullUI() {
       data: {
         labels,
         datasets: [
-          { label: 'Standard', data: baseData, borderColor: isLight ? '#94a3b8' : 'rgba(148,163,184,0.3)', borderWidth: 2, borderDash: [6, 4], fill: false, tension: 0.4, pointRadius: 0 },
-          { label: 'Accelerated', data: optData, borderColor: accentColor, borderWidth: 3, fill: { target: 'origin', above: isLight ? 'rgba(16,185,129,0.04)' : 'rgba(16,185,129,0.06)' }, tension: 0.4, pointRadius: 0 }
+          {
+            label: 'Standard',
+            data: baseData,
+            borderColor: isLight ? '#94a3b8' : 'rgba(148,163,184,0.3)',
+            borderWidth: 2,
+            borderDash: [6, 4],
+            fill: false,
+            tension: 0.4,
+            pointRadius: 0
+          },
+          {
+            label: 'Accelerated',
+            data: optData,
+            borderColor: accentColor,
+            borderWidth: 4,
+            fill: { target: 'origin', above: isLight ? 'rgba(99,102,241,0.04)' : 'rgba(99,102,241,0.1)' },
+            tension: 0.4,
+            pointRadius: ctx => (ctx.chart.data.labels[ctx.dataIndex] === 0 ? 7 : 0),
+            pointBackgroundColor: '#ffffff',
+            pointBorderColor: accentColor,
+            pointBorderWidth: 3,
+            pointHoverRadius: 9,
+            pointHitRadius: 10
+          }
         ]
       },
       options: {

@@ -89,14 +89,41 @@ function updateCharts(baseline, optimized, paid, remaining) {
     const textColor = isLight ? '#4b5563' : '#cbd5e1';
     const gridColor = isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)';
 
-    const labels = baseline.schedule.map(d => `Yr ${Math.floor(d.month / 12)}`);
+    const accentColor = '#6366f1';
+
+    // Inject Month 0 (Today) for the chart
+    const baselineChartData = [{ month: 0, balance: remaining }, ...baseline.schedule];
+    const optimizedChartData = [{ month: 0, balance: remaining }, ...optimized.schedule];
+    const labels = baselineChartData.map(d => `Yr ${Math.floor(d.month / 12)}`);
+
     mainChart = new Chart(ctxMain, {
         type: 'line',
         data: {
             labels,
             datasets: [
-                { label: 'Original', data: baseline.schedule.map(d => d.balance), borderColor: isLight ? '#94a3b8' : 'rgba(148,163,184,0.4)', borderWidth: 1, borderDash: [5, 5], pointRadius: 0, fill: false },
-                { label: 'Accelerated', data: optimized.schedule.map(d => d.balance), borderColor: isLight ? '#059669' : '#6ee7b7', borderWidth: 2.5, pointRadius: 0, tension: 0.4, fill: true, backgroundColor: isLight ? 'rgba(16,185,129,0.06)' : 'rgba(110,231,183,0.06)' }
+                {
+                    label: 'Original',
+                    data: baselineChartData.map(d => d.balance),
+                    borderColor: isLight ? '#94a3b8' : 'rgba(148,163,184,0.4)',
+                    borderWidth: 1.5,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    fill: false,
+                    tension: 0.4
+                },
+                {
+                    label: 'Accelerated',
+                    data: optimizedChartData.map(d => d.balance),
+                    borderColor: accentColor,
+                    borderWidth: 3,
+                    pointRadius: ctx => (ctx.dataIndex === 0 ? 5 : 0),
+                    pointBackgroundColor: '#ffffff',
+                    pointBorderColor: accentColor,
+                    pointBorderWidth: 2,
+                    tension: 0.4,
+                    fill: true,
+                    backgroundColor: isLight ? 'rgba(99,102,241,0.05)' : 'rgba(99,102,241,0.1)'
+                }
             ]
         },
         options: {
@@ -118,7 +145,7 @@ function updateCharts(baseline, optimized, paid, remaining) {
             labels: ['Paid Off', 'Remaining'],
             datasets: [{
                 data: [paid, remaining],
-                backgroundColor: isLight ? ['#10b981', '#e2e8f0'] : ['#6ee7b7', '#1e293b'],
+                backgroundColor: isLight ? ['#10b981', '#e2e8f0'] : ['#6366f1', '#1e293b'],
                 borderWidth: 0,
                 hoverOffset: 4
             }]
