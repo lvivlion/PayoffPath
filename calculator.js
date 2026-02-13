@@ -30,6 +30,11 @@ const LoanCalculator = {
             const interest = balance * monthlyRate;
             let principalPaid = (monthlyPayment + monthlyExtra) - interest;
 
+            // Guard: if payment doesn't cover interest, negative amortization — stop
+            if (principalPaid <= 0 && monthlyExtra === 0 && oneTimeExtra === 0) {
+                break;
+            }
+
             if (principalPaid > balance) {
                 principalPaid = balance;
             }
@@ -79,7 +84,13 @@ const LoanCalculator = {
 
         while (balance > 0 && month < 480) {
             const interest = balance * monthlyRate;
-            const principalPaid = monthlyPayment - interest;
+            let principalPaid = monthlyPayment - interest;
+
+            // Guard: negative amortization — stop
+            if (principalPaid <= 0) break;
+
+            // Clamp final payment
+            if (principalPaid > balance) principalPaid = balance;
 
             schedule.push({
                 month: month,
@@ -106,8 +117,10 @@ const LoanCalculator = {
         let standardBalance = originalPrincipal;
         for (let i = 0; i < monthsPassed; i++) {
             const interest = standardBalance * monthlyRate;
-            standardBalance -= (monthlyPayment - interest);
-            if (standardBalance <= 0) break;
+            const principalPart = monthlyPayment - interest;
+            if (principalPart <= 0) break; // Guard: negative amortization
+            standardBalance -= principalPart;
+            if (standardBalance <= 0) { standardBalance = 0; break; }
         }
 
         let simulatedBalance = originalPrincipal;
@@ -115,8 +128,10 @@ const LoanCalculator = {
         let historicalInterestPaid = 0;
         while (simulatedBalance > currentBalance && stdMonthsToReachCurrent < 600) {
             const interest = simulatedBalance * monthlyRate;
+            const principalPart = monthlyPayment - interest;
+            if (principalPart <= 0) break; // Guard: negative amortization
             historicalInterestPaid += interest;
-            simulatedBalance -= (monthlyPayment - interest);
+            simulatedBalance -= principalPart;
             stdMonthsToReachCurrent++;
         }
 

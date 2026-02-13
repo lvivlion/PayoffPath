@@ -38,9 +38,11 @@ function updateUI() {
     UI.extraAmountLabel.textContent = `+$${extraMonthly}`;
     UI.oneTimeAmountLabel.textContent = `+$${extraOneTime}`;
 
-    const principal = loanData.ledgerBalance;
-    const rate = loanData.interestRate || 6.0;
-    const monthlyBase = loanData.monthlyPayment || 1558.83;
+    const principal = parseFloat(loanData.ledgerBalance) || 0;
+    if (principal <= 0) return; // No valid balance to calculate
+    const rate = parseFloat(loanData.interestRate) || 6.0;
+    const monthlyBase = parseFloat(loanData.monthlyPayment) ||
+        LoanCalculator.calculateMonthlyPayment(principal, rate, 30);
 
     const baseline = LoanCalculator.getAmortizationStats(principal, rate, monthlyBase, 0, 0);
     const optimized = LoanCalculator.getAmortizationStats(principal, rate, monthlyBase, extraMonthly, extraOneTime);

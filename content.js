@@ -657,6 +657,7 @@ function buildFullUI() {
   let charts = { line: null, pie: null };
   let detectedBalance = null;
   let showHistory = false;
+  let retryCount = 0;
 
   // ── Stepper ──
   const steps = shadow.querySelectorAll('.pp-ob-step');
@@ -714,6 +715,45 @@ function buildFullUI() {
 
 
 
+  // ── Re-scan page for updated balance ──
+  function refreshBalanceFromPage(callback) {
+    const amounts = scanPageForAmounts();
+    if (amounts.length === 0) return callback(null);
+
+    const hostname = window.location.hostname;
+    chrome.storage.local.get(['siteOverrides', 'loanData'], (res) => {
+      const cfg = res.siteOverrides?.[hostname];
+      const currentStored = parseFloat(res.loanData?.ledgerBalance) || 0;
+      const origAmount = parseFloat(cfg?.origAmount) || 0;
+
+      // Find the best candidate: a value that is <= original loan amount and > 0
+      // Prefer the value closest to the previously stored balance (likely the updated version)
+      let bestMatch = null;
+      let bestDiff = Infinity;
+      for (const a of amounts) {
+        const v = Math.abs(a.value);
+        if (v > 0 && (origAmount <= 0 || v <= origAmount * 1.05)) {
+          const diff = Math.abs(v - currentStored);
+          if (diff < bestDiff) {
+            bestDiff = diff;
+            bestMatch = v;
+          }
+        }
+      }
+
+      if (bestMatch !== null && bestMatch !== currentStored) {
+        // Update stored loanData with refreshed balance
+        const updatedLoanData = { ...(res.loanData || {}), ledgerBalance: bestMatch };
+        chrome.storage.local.set({ loanData: updatedLoanData }, () => {
+          console.log('[PayoffPath] Balance refreshed from page:', currentStored, '→', bestMatch);
+          callback(bestMatch);
+        });
+      } else {
+        callback(null); // No change
+      }
+    });
+  }
+
   // ── Dashboard calculation ──
   function runCalculation() {
     const hostname = window.location.hostname;
@@ -763,8 +803,10 @@ function buildFullUI() {
         for (let i = 0; i < monthsDiff; i++) {
           const interest = hBalance * monthlyRate;
           const principalPart = monthlyPayment - interest;
+          if (principalPart <= 0) break; // Guard: negative amortization
           hTotalInterest += interest;
           hTotalPrincipal += principalPart;
+          hBalance -= principalPart;
           history.push({
             month: i - monthsDiff, // negative months relative to today
             balance: hBalance,
@@ -772,7 +814,6 @@ function buildFullUI() {
             principalPaid: hTotalPrincipal,
             isHistory: true
           });
-          hBalance -= principalPart;
           if (hBalance <= balance) break; // Close enough to current
         }
       }
@@ -798,7 +839,11 @@ function buildFullUI() {
 
       // Recommendation
       if (extraMonthly > 0 || lumpSum > 0) {
-        els.recommendation.textContent = `By paying an extra $${(extraMonthly + lumpSum).toLocaleString()}, you'll save $${Math.round(saved).toLocaleString()} in interest and be debt-free ${yrs > 0 ? yrs + ' years' : ''} ${mos} months sooner. This is a strong financial move.`;
+        const timeParts = [];
+        if (yrs > 0) timeParts.push(`${yrs} years`);
+        if (mos > 0) timeParts.push(`${mos} months`);
+        const timeStr = timeParts.join(' and ') || 'less than a month';
+        els.recommendation.textContent = `By paying an extra $${(extraMonthly + lumpSum).toLocaleString()}, you'll save $${Math.round(saved).toLocaleString()} in interest and be debt-free ${timeStr} sooner. This is a strong financial move.`;
       } else {
         els.recommendation.textContent = `Use the simulation sliders to see how extra payments can accelerate your payoff and save thousands in interest.`;
       }
@@ -872,11 +917,13 @@ function buildFullUI() {
 
     const rect = lineCtx.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) {
+      retryCount++;
       if (retryCount < 30) { // Limit retries to ~0.5s
         requestAnimationFrame(() => renderCharts(currentBalance, baseline, optimized, origAmount, rate, startDate, monthlyPayment, history));
       }
       return;
     }
+    retryCount = 0; // Reset on success
 
     if (charts.line) charts.line.destroy();
     if (charts.pie) charts.pie.destroy();
@@ -936,7 +983,6 @@ function buildFullUI() {
     });
 
     // Pie chart
-    if (charts.pie) charts.pie.destroy();
 
     const paid = origAmount - currentBalance;
     const remaining = currentBalance;
@@ -996,7 +1042,10 @@ function buildFullUI() {
       const ov = res.siteOverrides?.[hostname];
       if (ov && ov.rate > 0 && ov.origAmount > 0) {
         modal.style.display = 'flex';
-        updateDashboard();
+        // Re-scan page for updated balance before showing dashboard
+        refreshBalanceFromPage(() => {
+          updateDashboard();
+        });
       } else {
         onboarding.style.display = 'flex';
         setStep(0);
@@ -1159,7 +1208,10 @@ function buildFullUI() {
     const ov = res.siteOverrides?.[hostname];
     if (ov && ov.rate > 0 && ov.origAmount > 0) {
       modal.style.display = 'flex';
-      updateDashboard();
+      // Re-scan page for updated balance on page load
+      refreshBalanceFromPage(() => {
+        updateDashboard();
+      });
     } else {
       onboarding.style.display = 'flex';
       setStep(0);
