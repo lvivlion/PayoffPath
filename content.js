@@ -474,9 +474,21 @@ function buildHTML() {
         <!-- COLUMN 3: Progress & Real-time Edge -->
         <div class="pp-col">
           <div class="pp-card">
-            <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg> Total Savings</h3>
-            <div class="pp-stat-value green" id="pp-savings" style="font-size:2.2rem">$---</div>
-            <p style="font-size:0.7rem; color:var(--text-muted); margin-top:4px; line-height:1.4">Interest saved through acceleration.</p>
+            <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg> Interest Savings</h3>
+            <div class="pp-stat" style="margin-bottom:8px">
+              <div class="pp-stat-label">SAVED SO FAR</div>
+              <div class="pp-stat-value green" id="pp-hist-savings" style="font-size:1.4rem">$0</div>
+              <div id="pp-hist-savings-note" style="font-size:0.65rem; color:var(--text-muted); margin-top:2px; line-height:1.3"></div>
+            </div>
+            <div class="pp-stat" style="margin-bottom:8px; padding-top:8px; border-top:1px solid var(--border)">
+              <div class="pp-stat-label">PROJECTED SAVINGS</div>
+              <div class="pp-stat-value green" id="pp-sim-savings" style="font-size:1.4rem">$0</div>
+              <div style="font-size:0.65rem; color:var(--text-muted); margin-top:2px">From simulation sliders</div>
+            </div>
+            <div style="padding-top:8px; border-top:1px solid var(--border-accent)">
+              <div class="pp-stat-label" style="color:var(--accent)">TOTAL POTENTIAL SAVINGS</div>
+              <div class="pp-stat-value green" id="pp-total-savings" style="font-size:1.8rem">$0</div>
+            </div>
           </div>
 
           <div class="pp-card">
@@ -643,7 +655,9 @@ function buildFullUI() {
 
   const els = {
     orig: $('pp-orig'), balance: $('pp-balance'), percent: $('pp-percent'),
-    bar: $('pp-bar'), savings: $('pp-savings'),
+    bar: $('pp-bar'),
+    histSavings: $('pp-hist-savings'), histSavingsNote: $('pp-hist-savings-note'),
+    simSavings: $('pp-sim-savings'), totalSavings: $('pp-total-savings'),
     slideMonthly: $('pp-slide-monthly'), slideDrop: $('pp-slide-drop'),
     lblMonthly: $('pp-lbl-monthly'), lblDrop: $('pp-lbl-drop'),
     timeSaved: $('pp-time-saved'), payoffDate: $('pp-payoff-date'),
@@ -784,46 +798,104 @@ function buildFullUI() {
       // Optimized (with extra)
       const optimized = LoanCalculator.getAmortizationStats(balance, rate, monthlyPayment, extraMonthly, lumpSum);
 
-      const saved = Math.max(0, baseline.totalInterest - optimized.totalInterest);
+      const simSaved = Math.max(0, baseline.totalInterest - optimized.totalInterest);
       const monthsSaved = Math.max(0, baseline.months - optimized.months);
       const pctPaid = origAmount > 0 ? Math.min(100, (1 - balance / origAmount) * 100).toFixed(1) : 0;
 
+      // ── Historical Interest Savings ──
+      // Compare where the standard schedule expects them to be vs. where they actually are
+      let histSaved = 0;
+      let monthsAhead = 0;
+      let expectedBalance = balance; // default: assume on track
+      const monthlyRate = rate / 100 / 12;
+
       // Historical Path
       let history = [];
+      let monthsDiff = 0;
       if (startDate && origAmount > balance) {
         const sDate = new Date(startDate);
         const now = new Date();
-        const monthsDiff = (now.getFullYear() - sDate.getFullYear()) * 12 + (now.getMonth() - sDate.getMonth());
+        monthsDiff = (now.getFullYear() - sDate.getFullYear()) * 12 + (now.getMonth() - sDate.getMonth());
 
-        // Simulating standard path from orig to balance
+        // Calculate expected balance via standard amortization
+        expectedBalance = origAmount;
+        let expectedInterest = 0;
+        for (let i = 0; i < monthsDiff; i++) {
+          const interest = expectedBalance * monthlyRate;
+          const principalPart = monthlyPayment - interest;
+          if (principalPart <= 0) break;
+          expectedInterest += interest;
+          expectedBalance -= principalPart;
+          if (expectedBalance <= 0) { expectedBalance = 0; break; }
+        }
+
+        // If actual balance is lower than expected → they're ahead!
+        if (balance < expectedBalance) {
+          // Calculate interest saved: simulate standard path to reach current balance
+          let simBalance = origAmount;
+          let interestToReachActual = 0;
+          let monthsToReachActual = 0;
+          while (simBalance > balance && monthsToReachActual < 600) {
+            const interest = simBalance * monthlyRate;
+            const principalPart = monthlyPayment - interest;
+            if (principalPart <= 0) break;
+            interestToReachActual += interest;
+            simBalance -= principalPart;
+            monthsToReachActual++;
+          }
+          monthsAhead = monthsToReachActual - monthsDiff;
+          // Interest they would have paid on the "extra" balance over remaining months
+          // More accurate: difference in total interest from expected vs actual remaining
+          const remainingFromExpected = LoanCalculator.getAmortizationStats(expectedBalance, rate, monthlyPayment, 0, 0);
+          const remainingFromActual = LoanCalculator.getAmortizationStats(balance, rate, monthlyPayment, 0, 0);
+          histSaved = Math.max(0, remainingFromExpected.totalInterest - remainingFromActual.totalInterest);
+        }
+
+        // Build history rows for table/chart
         let hBalance = origAmount;
         let hTotalInterest = 0;
         let hTotalPrincipal = 0;
-        const monthlyRate = rate / 100 / 12;
         for (let i = 0; i < monthsDiff; i++) {
           const interest = hBalance * monthlyRate;
           const principalPart = monthlyPayment - interest;
-          if (principalPart <= 0) break; // Guard: negative amortization
+          if (principalPart <= 0) break;
           hTotalInterest += interest;
           hTotalPrincipal += principalPart;
           hBalance -= principalPart;
           history.push({
-            month: i - monthsDiff, // negative months relative to today
+            month: i - monthsDiff,
             balance: hBalance,
             interestPaid: hTotalInterest,
             principalPaid: hTotalPrincipal,
             isHistory: true
           });
-          if (hBalance <= balance) break; // Close enough to current
+          if (hBalance <= balance) break;
         }
       }
 
+      const totalSaved = histSaved + simSaved;
+
+      // ── Update UI ──
       els.orig.textContent = '$' + Math.round(origAmount).toLocaleString();
       els.origLabel.textContent = `Original Loan (${rate}%)`;
       els.balance.textContent = '$' + Math.round(balance).toLocaleString();
       els.percent.textContent = pctPaid + '%';
       els.bar.style.width = pctPaid + '%';
-      els.savings.textContent = '$' + Math.round(saved).toLocaleString();
+
+      // Savings breakdown
+      els.histSavings.textContent = '$' + Math.round(histSaved).toLocaleString();
+      if (histSaved > 0 && monthsAhead > 0) {
+        const aheadYrs = Math.floor(monthsAhead / 12);
+        const aheadMos = monthsAhead % 12;
+        const aheadStr = aheadYrs > 0 ? `${aheadYrs}y ${aheadMos}m` : `${aheadMos} months`;
+        els.histSavingsNote.textContent = `You're ${aheadStr} ahead of schedule!`;
+      } else if (startDate) {
+        els.histSavingsNote.textContent = 'On track with standard schedule';
+      } else {
+        els.histSavingsNote.textContent = 'Set a start date in Settings to track';
+      }
+      els.simSavings.textContent = '$' + Math.round(simSaved).toLocaleString();
+      els.totalSavings.textContent = '$' + Math.round(totalSaved).toLocaleString();
 
       const yrs = Math.floor(monthsSaved / 12);
       const mos = monthsSaved % 12;
@@ -843,7 +915,13 @@ function buildFullUI() {
         if (yrs > 0) timeParts.push(`${yrs} years`);
         if (mos > 0) timeParts.push(`${mos} months`);
         const timeStr = timeParts.join(' and ') || 'less than a month';
-        els.recommendation.textContent = `By paying an extra $${(extraMonthly + lumpSum).toLocaleString()}, you'll save $${Math.round(saved).toLocaleString()} in interest and be debt-free ${timeStr} sooner. This is a strong financial move.`;
+        let recText = `By paying an extra $${(extraMonthly + lumpSum).toLocaleString()}, you'll save $${Math.round(simSaved).toLocaleString()} in interest and be debt-free ${timeStr} sooner.`;
+        if (histSaved > 0) {
+          recText += ` Combined with your $${Math.round(histSaved).toLocaleString()} already saved, your total savings would be $${Math.round(totalSaved).toLocaleString()}.`;
+        }
+        els.recommendation.textContent = recText;
+      } else if (histSaved > 0) {
+        els.recommendation.textContent = `Great progress! You've already saved $${Math.round(histSaved).toLocaleString()} in interest by paying ahead of schedule. Use the simulation sliders to see how you can save even more.`;
       } else {
         els.recommendation.textContent = `Use the simulation sliders to see how extra payments can accelerate your payoff and save thousands in interest.`;
       }
