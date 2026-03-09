@@ -47,8 +47,10 @@ const LoanCalculator = {
             schedule.push({
                 month: months,
                 balance: Math.max(0, balance),
-                interestPaid: totalInterest,
-                principalPaid: totalPrincipal
+                interestPaid: interest,
+                principalPaid: principalPaid,
+                totalInterestPaid: totalInterest,
+                totalPrincipalPaid: totalPrincipal
             });
         }
 

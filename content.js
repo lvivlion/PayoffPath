@@ -867,8 +867,10 @@ function buildFullUI() {
           history.push({
             month: i - monthsDiff,
             balance: hBalance,
-            interestPaid: hTotalInterest,
-            principalPaid: hTotalPrincipal,
+            interestPaid: interest,
+            principalPaid: principalPart,
+            totalInterestPaid: hTotalInterest,
+            totalPrincipalPaid: hTotalPrincipal,
             isHistory: true
           });
           // Note: we don't break here even if hBalance <= balance, 
@@ -932,19 +934,25 @@ function buildFullUI() {
 
       // Table
       const thead = els.tableHead;
-      if (thead && thead.innerHTML === '') {
-        thead.innerHTML = '<tr><th>Pmnt #</th><th>Month</th><th>Balance</th><th>Interest</th><th>Equity</th></tr>';
+      if (thead && (thead.innerHTML === '' || thead.innerHTML.includes('Equity'))) {
+        thead.innerHTML = '<tr><th>Pmnt #</th><th>Month</th><th>Balance</th><th>Interest</th><th>Principal</th></tr>';
       }
       const tbody = els.tableBody;
       tbody.innerHTML = '';
 
       // Prepare data for table
-      const lastHist = history[history.length - 1] || { interestPaid: 0, principalPaid: 0 };
+      // Calculate today's breakdown based on ACTUAL current balance
+      const lastHist = history[history.length - 1] || { interestPaid: 0, principalPaid: 0, totalInterestPaid: 0, totalPrincipalPaid: 0 };
+      const currentInterest = balance * monthlyRate;
+      const currentPrincipal = monthlyPayment - currentInterest;
+
       const todayRow = {
         month: 0,
         balance: balance,
-        interestPaid: lastHist.interestPaid,
-        principalPaid: lastHist.principalPaid,
+        interestPaid: null, // No monthly breakdown for the snapshot row
+        principalPaid: null,
+        totalInterestPaid: (lastHist.totalInterestPaid || 0),
+        totalPrincipalPaid: (lastHist.totalPrincipalPaid || 0),
         isToday: true
       };
       const combinedSched = [...history, todayRow, ...optimized.schedule];
@@ -967,17 +975,20 @@ function buildFullUI() {
 
         const d = new Date(); d.setMonth(d.getMonth() + row.month);
 
-        // Pmnt # calculation: If startDate is 24 months ago, Today is pmnt #25
+        // Pmnt # calculation
         const historyLen = history.length;
         const pmntNum = historyLen + row.month + (startDate ? 1 : 0);
         const pmntDisplay = pmntNum > 0 ? `#${pmntNum}` : '-';
 
+        const intDisplay = row.interestPaid !== null ? `<td style="color: var(--danger);">$${Math.round(row.interestPaid).toLocaleString()}</td>` : `<td style="color: var(--text-muted); opacity: 0.5;">—</td>`;
+        const prinDisplay = row.principalPaid !== null ? `<td style="color: var(--accent);">$${Math.round(row.principalPaid).toLocaleString()}</td>` : `<td style="color: var(--text-muted); opacity: 0.5;">—</td>`;
+
         tr.innerHTML = `
           <td>${pmntDisplay}</td>
-          <td>${d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} ${row.isToday ? '<b>(Current)</b>' : (row.isHistory ? '(Past)' : '')}</td>
+          <td>${d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} ${row.isToday ? '<b>(Current Balance)</b>' : (row.isHistory ? '(Past)' : '')}</td>
           <td>$${Math.round(row.balance).toLocaleString()}</td>
-          <td>$${Math.round(row.interestPaid).toLocaleString()}</td>
-          <td>$${Math.round(row.principalPaid).toLocaleString()}</td>
+          ${intDisplay}
+          ${prinDisplay}
         `;
         tbody.appendChild(tr);
       }

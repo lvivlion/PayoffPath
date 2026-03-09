@@ -132,7 +132,13 @@ function updateCharts(baseline, optimized, paid, remaining) {
             scales: {
                 x: { display: false },
                 y: {
-                    ticks: { color: textColor, font: { size: 9, family: 'JetBrains Mono' } },
+                    ticks: {
+                        color: textColor,
+                        font: { size: 9, family: 'JetBrains Mono' },
+                        callback: function (value) {
+                            return '$' + (value / 1000).toFixed(0) + 'k';
+                        }
+                    },
                     grid: { color: gridColor }
                 }
             }
